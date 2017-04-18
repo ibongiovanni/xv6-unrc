@@ -7,4 +7,44 @@
 # Unignore all dirs
 !*/
 
+
+#From make.clean
+*.tex
+*.dvi
+*.idx
+*.aux
+*.log
+*.ind
+*.ilg
 *.o
+user/*.o
+*.d
+user/*.d
+*.asm
+*.sym
+vectors.S
+bootblock
+entryother
+initcode
+initcode.out
+kernel
+xv6.img
+fs.img
+kernelmemfs
+mkfs
+.gdbinit
+_cat
+_echo
+_forktest
+_grep
+_init
+_kill
+_ln
+_ls
+_mkdir
+_rm
+_sh
+_stressfs
+_usertests
+_wc
+_zombie
