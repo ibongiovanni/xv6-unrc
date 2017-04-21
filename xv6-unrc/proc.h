@@ -42,7 +42,7 @@ extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 struct context {
-  uint edi;
+    uint edi;
   uint esi;
   uint ebx;
   uint ebp;
@@ -66,6 +66,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  char tickscount;             // Ticks counter for timeslice
 };
 
 // Process memory is laid out contiguously, low addresses first:
