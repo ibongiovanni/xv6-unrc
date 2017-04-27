@@ -284,7 +284,6 @@ scheduler(void)
       switchuvm(p);
       p->tickscount=0;
       p->state = RUNNING;
-      cprintf("[[planning process %d (%s)]]\n", p->pid, p->name);
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
