@@ -21,6 +21,10 @@ forktest(void)
   printf(1, "fork test\n");
 
   for(n=0; n<N; n++){
+    if (n==4){ //fifth call
+      printf(1,"Calling procstat()\n");
+      procstat(); //show process status           
+    }
     pid = fork();
     if(pid < 0)
       break;
