@@ -6,6 +6,10 @@
 
 `make clean`:  cleans directory
 
-### Para los parches
+### Para crear los parches
 
 `diff -rupN xv6-unrc-orig/ xv6-unrc/ > projN.patch`
+
+### Para crear los parches
+
+`patch -p1 --dry-run < patch_file.patch`
