@@ -7,10 +7,57 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define NULL 0
+#define incprior(p) if (p->priorlevel>0) p->priorlevel--
+#define decprior(p) if (p->priorlevel<(NLEVELS-1)) p->priorlevel++
+
+struct level {
+  struct proc *first;
+  struct proc *last;
+};
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+  struct level level[NLEVELS];
 } ptable;
+
+
+//Update last element from level
+static void 
+enqueue(struct level *l, struct proc *p){
+  if (p->state != RUNNABLE){
+    panic("enqueue no RUNNABLE process");
+  }
+  if (p->priorlevel<0 || p->priorlevel>NLEVELS)
+    panic("invalid priorlevel");
+  if (l->first == NULL && l->last == NULL){
+    l->first = p;
+    l->last = p;
+  }else{
+    l->last->next = p;
+    l->last = p;
+  }
+}
+
+//Update first element and return previous value.
+//if no process return NULL
+static struct proc* 
+dequeue(struct level *l){
+  struct proc *p;
+
+  if (l->first == NULL && l->last == NULL)
+    return NULL;
+  if (l->first->state != RUNNABLE)
+    panic("dequeue no RUNNABLE process");
+  p = l->first;
+
+  l->first = l->first->next;
+  if (l->first == NULL)
+    l->last = l->first;
+
+  return p;
+}
 
 static struct proc *initproc;
 
@@ -47,6 +94,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->priorlevel = 0;
+  p->next = NULL;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -100,6 +149,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  enqueue(&ptable.level[p->priorlevel],p);
 }
 
 // Grow current process's memory by n bytes.
@@ -161,6 +211,7 @@ fork(void)
   // lock to force the compiler to emit the np->state write last.
   acquire(&ptable.lock);
   np->state = RUNNABLE;
+  enqueue(&ptable.level[np->priorlevel],np);
   release(&ptable.lock);
   
   return pid;
@@ -266,17 +317,18 @@ void
 scheduler(void)
 {
   struct proc *p;
-
+  int l;
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
+    // Loop over process table levels looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+    for(l=0; l < NLEVELS; l++){
+      if(ptable.level[l].first == NULL)
         continue;
 
+      p = dequeue(&ptable.level[l]);
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -322,6 +374,8 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
+  decprior(proc);
+  enqueue(&ptable.level[proc->priorlevel], proc);
   sched();
   release(&ptable.lock);
 }
@@ -392,8 +446,11 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      incprior(p);
+      enqueue(&ptable.level[p->priorlevel],p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -418,8 +475,10 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
         p->state = RUNNABLE;
+        enqueue(&ptable.level[0],p);
+      }
       release(&ptable.lock);
       return 0;
     }
