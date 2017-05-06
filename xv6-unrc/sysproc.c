@@ -96,3 +96,13 @@ sys_procstat(void)
   procdump();
   return 0;
 }
+
+int
+sys_set_priority(void)
+{
+  int n;
+
+  if(argint(0, &n) < 0)
+    return -1;
+  return set_priority(n);
+}

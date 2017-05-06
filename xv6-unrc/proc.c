@@ -523,3 +523,12 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+// Set the priority of proc to n
+int
+set_priority(int n){
+  if (n<0 || n>=NLEVELS)
+    return -1;
+  proc->priorlevel = n;
+  return 0;
+}
