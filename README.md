@@ -10,6 +10,6 @@
 
 `diff -rupN xv6-unrc-orig/ xv6-unrc/ > projN.patch`
 
-### Para crear los parches
+### Para probar los parches
 
 `patch -p1 --dry-run < patch_file.patch`
