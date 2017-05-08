@@ -31,6 +31,7 @@ enqueue(struct level *l, struct proc *p){
   }
   if (p->priorlevel<0 || p->priorlevel>NLEVELS)
     panic("invalid priorlevel");
+  p->next = NULL;
   if (l->first == NULL && l->last == NULL){
     l->first = p;
     l->last = p;
@@ -48,8 +49,10 @@ dequeue(struct level *l){
 
   if (l->first == NULL && l->last == NULL)
     return NULL;
-  if (l->first->state != RUNNABLE)
+  if (l->first->state != RUNNABLE){
+    cprintf("deq proc %d : %s in state %d\n",l->first->pid,l->first->name,l->first->state);
     panic("dequeue no RUNNABLE process");
+  }
   p = l->first;
 
   l->first = l->first->next;
@@ -522,9 +525,19 @@ procdump(void)
     }
     cprintf("\n");
   }
+
+  for (i=0; i < NLEVELS; ++i){
+    cprintf("Level %d: ",i);
+    for (p = ptable.level[i].first; p != NULL  ; p = p->next)
+    {
+      cprintf("[%d:%s ",p->pid, p->name);
+      cprintf("] -> ");
+    }
+    cprintf("|\n");
+  }  
 }
 
-// Set the priority of proc to n
+// Set the priority of the running proc to n
 int
 set_priority(int n){
   if (n<0 || n>=NLEVELS)
