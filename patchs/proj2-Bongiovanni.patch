@@ -1,0 +1,405 @@
+diff -rupN xv6-unrc-orig/defs.h xv6-unrc/defs.h
+--- xv6-unrc-orig/defs.h	2017-05-03 13:59:00.609649404 -0300
++++ xv6-unrc/defs.h	2017-05-06 13:57:03.045512690 -0300
+@@ -118,6 +118,7 @@ void            userinit(void);
+ int             wait(void);
+ void            wakeup(void*);
+ void            yield(void);
++int             set_priority(int);
+ 
+ // swtch.S
+ void            swtch(struct context**, struct context*);
+diff -rupN xv6-unrc-orig/Makefile xv6-unrc/Makefile
+--- xv6-unrc-orig/Makefile	2017-05-03 13:59:00.593649404 -0300
++++ xv6-unrc/Makefile	2017-05-03 13:59:00.645649404 -0300
+@@ -172,6 +172,7 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_quantumtest\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+diff -rupN xv6-unrc-orig/mkfs.c xv6-unrc/mkfs.c
+--- xv6-unrc-orig/mkfs.c	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/mkfs.c	2017-04-18 20:20:28.675242680 -0300
+@@ -11,7 +11,7 @@
+ #include "stat.h"
+ #include "param.h"
+ 
+-#define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
++//#define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
+ 
+ int nblocks = (995-LOGSIZE);
+ int nlog = LOGSIZE;
+diff -rupN xv6-unrc-orig/param.h xv6-unrc/param.h
+--- xv6-unrc-orig/param.h	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/param.h	2017-05-06 11:11:07.403881691 -0300
+@@ -10,4 +10,5 @@
+ #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
+ #define LOGSIZE      (MAXOPBLOCKS*3)  // max data sectors in on-disk log
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+-
++#define QUANTUM 	 10	 // max ticks a process has to use cpu
++#define NLEVELS 	 4 	 // number of priority levels 
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/proc.c xv6-unrc/proc.c
+--- xv6-unrc-orig/proc.c	2017-05-03 13:59:00.621649404 -0300
++++ xv6-unrc/proc.c	2017-05-09 14:53:23.854799415 -0300
+@@ -7,11 +7,61 @@
+ #include "proc.h"
+ #include "spinlock.h"
+ 
++#define NULL 0
++#define incprior(p) if (p->priorlevel>0) p->priorlevel--
++#define decprior(p) if (p->priorlevel<(NLEVELS-1)) p->priorlevel++
++
++struct level {
++  struct proc *first;
++  struct proc *last;
++};
++
+ struct {
+   struct spinlock lock;
+   struct proc proc[NPROC];
++  struct level level[NLEVELS];
+ } ptable;
+ 
++
++//Update last element from level
++static void 
++enqueue(struct level *l, struct proc *p){
++  if (p->state != RUNNABLE){
++    panic("enqueue no RUNNABLE process");
++  }
++  if (p->priorlevel<0 || p->priorlevel>NLEVELS)
++    panic("invalid priorlevel");
++  p->next = NULL;
++  if (l->first == NULL && l->last == NULL){
++    l->first = p;
++    l->last = p;
++  }else{
++    l->last->next = p;
++    l->last = p;
++  }
++}
++
++//Update first element and return previous value.
++//if no process return NULL
++static struct proc* 
++dequeue(struct level *l){
++  struct proc *p;
++
++  if (l->first == NULL && l->last == NULL)
++    return NULL;
++  if (l->first->state != RUNNABLE){
++    cprintf("deq proc %d : %s in state %d\n",l->first->pid,l->first->name,l->first->state);
++    panic("dequeue no RUNNABLE process");
++  }
++  p = l->first;
++
++  l->first = l->first->next;
++  if (l->first == NULL)
++    l->last = l->first;
++
++  return p;
++}
++
+ static struct proc *initproc;
+ 
+ int nextpid = 1;
+@@ -47,6 +97,8 @@ allocproc(void)
+ found:
+   p->state = EMBRYO;
+   p->pid = nextpid++;
++  p->priorlevel = 0;
++  p->next = NULL;
+   release(&ptable.lock);
+ 
+   // Allocate kernel stack.
+@@ -100,6 +152,7 @@ userinit(void)
+   p->cwd = namei("/");
+ 
+   p->state = RUNNABLE;
++  enqueue(&ptable.level[p->priorlevel],p);
+ }
+ 
+ // Grow current process's memory by n bytes.
+@@ -161,6 +214,7 @@ fork(void)
+   // lock to force the compiler to emit the np->state write last.
+   acquire(&ptable.lock);
+   np->state = RUNNABLE;
++  enqueue(&ptable.level[np->priorlevel],np);
+   release(&ptable.lock);
+   
+   return pid;
+@@ -266,22 +320,24 @@ void
+ scheduler(void)
+ {
+   struct proc *p;
+-
++  int l;
+   for(;;){
+     // Enable interrupts on this processor.
+     sti();
+ 
+-    // Loop over process table looking for process to run.
++    // Loop over process table levels looking for process to run.
+     acquire(&ptable.lock);
+-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+-      if(p->state != RUNNABLE)
++    for(l=0; l < NLEVELS; l++){
++      if(ptable.level[l].first == NULL)
+         continue;
+ 
++      p = dequeue(&ptable.level[l]);
+       // Switch to chosen process.  It is the process's job
+       // to release ptable.lock and then reacquire it
+       // before jumping back to us.
+       proc = p;
+       switchuvm(p);
++      p->tickscount=0;
+       p->state = RUNNING;
+       swtch(&cpu->scheduler, proc->context);
+       switchkvm();
+@@ -321,6 +377,8 @@ yield(void)
+ {
+   acquire(&ptable.lock);  //DOC: yieldlock
+   proc->state = RUNNABLE;
++  decprior(proc);
++  enqueue(&ptable.level[proc->priorlevel], proc);
+   sched();
+   release(&ptable.lock);
+ }
+@@ -391,8 +449,11 @@ wakeup1(void *chan)
+   struct proc *p;
+ 
+   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+-    if(p->state == SLEEPING && p->chan == chan)
++    if(p->state == SLEEPING && p->chan == chan){
+       p->state = RUNNABLE;
++      incprior(p);
++      enqueue(&ptable.level[p->priorlevel],p);
++    }
+ }
+ 
+ // Wake up all processes sleeping on chan.
+@@ -417,8 +478,10 @@ kill(int pid)
+     if(p->pid == pid){
+       p->killed = 1;
+       // Wake process from sleep if necessary.
+-      if(p->state == SLEEPING)
++      if(p->state == SLEEPING){
+         p->state = RUNNABLE;
++        enqueue(&ptable.level[0],p);
++      }
+       release(&ptable.lock);
+       return 0;
+     }
+@@ -454,7 +517,7 @@ procdump(void)
+       state = states[p->state];
+     else
+       state = "???";
+-    cprintf("%d %s %s", p->pid, state, p->name);
++    cprintf("%d %s %s %d", p->pid, state, p->name, p->priorlevel);
+     if(p->state == SLEEPING){
+       getcallerpcs((uint*)p->context->ebp+2, pc);
+       for(i=0; i<10 && pc[i] != 0; i++)
+@@ -462,4 +525,23 @@ procdump(void)
+     }
+     cprintf("\n");
+   }
++
++  for (i=0; i < NLEVELS; ++i){
++    cprintf("Level %d: ",i);
++    for (p = ptable.level[i].first; p != NULL  ; p = p->next)
++    {
++      cprintf("[%d:%s ",p->pid, p->name);
++      cprintf("] -> ");
++    }
++    cprintf("|\n");
++  }  
+ }
++
++// Set the priority of the running proc to n
++int
++set_priority(int n){
++  if (n<0 || n>=NLEVELS)
++    return -1;
++  proc->priorlevel = n;
++  return 0;
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/proc.h xv6-unrc/proc.h
+--- xv6-unrc-orig/proc.h	2017-05-03 13:59:00.621649404 -0300
++++ xv6-unrc/proc.h	2017-05-06 11:11:07.407883691 -0300
+@@ -42,7 +42,7 @@ extern struct proc *proc asm("%gs:4");
+ // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
+ // but it is on the stack and allocproc() manipulates it.
+ struct context {
+-  uint edi;
++    uint edi;
+   uint esi;
+   uint ebx;
+   uint ebp;
+@@ -66,6 +66,9 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++  char tickscount;             // Ticks counter for timeslice
++  struct proc *next;           // Next process in FIFO sched
++  int priorlevel;              // Priority Level
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+diff -rupN xv6-unrc-orig/syscall.c xv6-unrc/syscall.c
+--- xv6-unrc-orig/syscall.c	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/syscall.c	2017-05-06 11:28:59.273512690 -0300
+@@ -98,6 +98,8 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_procstat(void);
++extern int sys_set_priority(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -121,6 +123,8 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_procstat]   sys_procstat,
++[SYS_set_priority]   sys_set_priority,
+ };
+ 
+ void
+diff -rupN xv6-unrc-orig/syscall.h xv6-unrc/syscall.h
+--- xv6-unrc-orig/syscall.h	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/syscall.h	2017-05-06 11:26:48.761512690 -0300
+@@ -20,3 +20,5 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_procstat 22
++#define SYS_set_priority 23
+diff -rupN xv6-unrc-orig/sysproc.c xv6-unrc/sysproc.c
+--- xv6-unrc-orig/sysproc.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/sysproc.c	2017-05-06 12:44:23.937512690 -0300
+@@ -89,3 +89,20 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_procstat(void)
++{
++  procdump();
++  return 0;
++}
++
++int
++sys_set_priority(void)
++{
++  int n;
++
++  if(argint(0, &n) < 0)
++    return -1;
++  return set_priority(n);
++}
+diff -rupN xv6-unrc-orig/trap.c xv6-unrc/trap.c
+--- xv6-unrc-orig/trap.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/trap.c	2017-05-03 13:59:00.665649404 -0300
+@@ -102,8 +102,10 @@ trap(struct trapframe *tf)
+ 
+   // Force process to give up CPU on clock tick.
+   // If interrupts were on while locks held, would need to check nlock.
+-  if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
+-    yield();
++  if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER){
++      proc->tickscount++;                            //Increase the pocess ticks counter
++      if (proc->tickscount > QUANTUM) yield();  //Realease the CPU if quamtum is over
++  }
+ 
+   // Check if the process has been killed since we yielded
+   if(proc && proc->killed && (tf->cs&3) == DPL_USER)
+diff -rupN xv6-unrc-orig/user/forktest.c xv6-unrc/user/forktest.c
+--- xv6-unrc-orig/user/forktest.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/user/forktest.c	2017-05-05 20:35:52.901623295 -0300
+@@ -21,6 +21,10 @@ forktest(void)
+   printf(1, "fork test\n");
+ 
+   for(n=0; n<N; n++){
++    if (n==4){ //fifth call
++      printf(1,"Calling procstat()\n");
++      procstat(); //show process status           
++    }
+     pid = fork();
+     if(pid < 0)
+       break;
+diff -rupN xv6-unrc-orig/user/param.h xv6-unrc/user/param.h
+--- xv6-unrc-orig/user/param.h	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/user/param.h	2017-05-06 11:11:07.403881691 -0300
+@@ -10,4 +10,5 @@
+ #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
+ #define LOGSIZE      (MAXOPBLOCKS*3)  // max data sectors in on-disk log
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+-
++#define QUANTUM 	 10	 // max ticks a process has to use cpu
++#define NLEVELS 	 4 	 // number of priority levels 
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/quantumtest.c xv6-unrc/user/quantumtest.c
+--- xv6-unrc-orig/user/quantumtest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/quantumtest.c	2017-05-09 14:51:41.362799415 -0300
+@@ -0,0 +1,20 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++
++int 
++main(void)
++{	
++	set_priority(3);
++	procstat();
++	int i=50000;
++	int p=1;
++	while(i>0){
++		if (i%2==0) p+=i;
++		else p-=i;
++		i--;
++	}
++	printf(1,"p = %d\n",p );
++	exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/syscall.h xv6-unrc/user/syscall.h
+--- xv6-unrc-orig/user/syscall.h	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/user/syscall.h	2017-05-06 11:26:48.761512690 -0300
+@@ -20,3 +20,5 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_procstat 22
++#define SYS_set_priority 23
+diff -rupN xv6-unrc-orig/user/user.h xv6-unrc/user/user.h
+--- xv6-unrc-orig/user/user.h	2017-05-03 13:59:00.633649404 -0300
++++ xv6-unrc/user/user.h	2017-05-06 11:25:32.221512690 -0300
+@@ -23,6 +23,8 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int procstat(void);
++int set_priority(int);
+ 
+ // ulib.c
+ int stat(char*, struct stat*);
+diff -rupN xv6-unrc-orig/user/usys.S xv6-unrc/user/usys.S
+--- xv6-unrc-orig/user/usys.S	2017-05-03 13:59:00.633649404 -0300
++++ xv6-unrc/user/usys.S	2017-05-06 11:25:31.465512690 -0300
+@@ -29,3 +29,6 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(procstat)
++SYSCALL(set_priority)
++
