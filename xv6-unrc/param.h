@@ -12,3 +12,5 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define QUANTUM 	 10	 // max ticks a process has to use cpu
 #define NLEVELS 	 4 	 // number of priority levels 
+#define MAXSEM 	 	 100 // max semaphores on system 
+#define MAXSEMPRC 	 16	 // max semaphores per process 
