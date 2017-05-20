@@ -6,6 +6,8 @@
 int 
 main(void)
 {	
+	set_priority(3);
+	procstat();
 	int i=50000;
 	int p=1;
 	while(i>0){
