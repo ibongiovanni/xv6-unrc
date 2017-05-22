@@ -13,4 +13,4 @@
 #define QUANTUM 	 10	 // max ticks a process has to use cpu
 #define NLEVELS 	 4 	 // number of priority levels 
 #define MAXSEM 	 	 100 // max semaphores on system 
-#define MAXSEMPRC 	 16	 // max semaphores per process 
+#define MAXSEMPROC 	 16	 // max semaphores per process 

@@ -227,7 +227,7 @@ void
 exit(void)
 {
   struct proc *p;
-  int fd;
+  int fd,s;
 
   if(proc == initproc)
     panic("init exiting");
@@ -237,6 +237,14 @@ exit(void)
     if(proc->ofile[fd]){
       fileclose(proc->ofile[fd]);
       proc->ofile[fd] = 0;
+    }
+  }
+
+  // Close all open semaphores.
+  for(s = 0; s < MAXSEMPROC; s++){
+    if(proc->osem[s]){
+      semfree(proc->osem[s]);
+      proc->osem[s] = 0;
     }
   }
 
