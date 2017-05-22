@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "semaphore.h"
 
 #define NULL 0
 #define incprior(p) if (p->priorlevel>0) p->priorlevel--
@@ -243,7 +244,7 @@ exit(void)
   // Close all open semaphores.
   for(s = 0; s < MAXSEMPROC; s++){
     if(proc->osem[s]){
-      semfree(proc->osem[s]);
+      semfree(proc->osem[s]->id);
       proc->osem[s] = 0;
     }
   }

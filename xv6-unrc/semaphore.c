@@ -3,6 +3,7 @@
 #include "param.h"
 #include "semaphore.h"
 #include "spinlock.h"
+#include "mmu.h" //It is necessary to include it to include proc.h?
 #include "proc.h"
 
 struct {
@@ -15,8 +16,8 @@ struct {
 int
 semget(int sem_id, int init_value){
   int id;
-  struct semaphore s;
-  adquire(&semtable.lock);
+  struct semaphore *s;
+  acquire(&semtable.lock);
   if (sem_id < -1 || sem_id == 0) {
     release(&semtable.lock);
     return -4;
@@ -81,8 +82,8 @@ semget(int sem_id, int init_value){
 int
 semfree(int sem_id){
   int id;
-  struct semaphore s;
-  adquire(&semtable.lock);
+  struct semaphore *s;
+  acquire(&semtable.lock);
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem
@@ -118,8 +119,8 @@ semfree(int sem_id){
 int
 semdown(int sem_id){
   int id;
-  struct semaphore s;
-  adquire(&semtable.lock);
+  struct semaphore *s;
+  acquire(&semtable.lock);
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem
@@ -154,8 +155,8 @@ semdown(int sem_id){
 int
 semup(int sem_id){
   int id;
-  struct semaphore s;
-  adquire(&semtable.lock);
+  struct semaphore *s;
+  acquire(&semtable.lock);
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem

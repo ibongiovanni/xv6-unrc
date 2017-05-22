@@ -69,7 +69,7 @@ struct proc {
   char tickscount;             // Ticks counter for timeslice
   struct proc *next;           // Next process in FIFO sched
   int priorlevel;              // Priority Level
-  struct semaphore *osem[MAXSEMPROC] //Open semaphores 
+  struct semaphore *osem[MAXSEMPROC]; //Open semaphores 
 };
 
 // Process memory is laid out contiguously, low addresses first:
