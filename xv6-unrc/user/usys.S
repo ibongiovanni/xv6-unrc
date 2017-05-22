@@ -31,4 +31,7 @@ SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(procstat)
 SYSCALL(set_priority)
-
+SYSCALL(semget)
+SYSCALL(semfree)
+SYSCALL(semup)
+SYSCALL(semdown)

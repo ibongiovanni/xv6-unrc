@@ -100,6 +100,11 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_procstat(void);
 extern int sys_set_priority(void);
+extern int sys_semget(void);
+extern int sys_semfree(void);
+extern int sys_semup(void);
+extern int sys_semdown(void);
+
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -125,6 +130,10 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_procstat]   sys_procstat,
 [SYS_set_priority]   sys_set_priority,
+[SYS_semget]   sys_semget,
+[SYS_semfree]   sys_semfree,
+[SYS_semup]   sys_semup,
+[SYS_semdown]   sys_semdown,
 };
 
 void

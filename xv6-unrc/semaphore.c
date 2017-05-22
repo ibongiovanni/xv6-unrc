@@ -12,16 +12,16 @@ struct {
 } semtable;
 
 //Creates or retun a semaphores descriptor
-//Returns semaphore id or eror code
+//Returns semaphore id or error code
 int
 semget(int sem_id, int init_value){
   int id;
   struct semaphore *s;
   acquire(&semtable.lock);
-  if (sem_id < -1 || sem_id == 0) {
+  if (sem_id < -1 || sem_id == 0) { //Invalid sem_id argument
     release(&semtable.lock);
     return -4;
-  } //Invalid sem_id argument
+  } 
   
   if (sem_id == -1) { //Get new semaphore
     //Search empty place in process semaphores
