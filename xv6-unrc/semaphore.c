@@ -34,9 +34,8 @@ semget(int sem_id, int init_value){
     }
     //Search empty place in semtable
     for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
-      if(!s->in_use){ //Found free sem
+      if(s->refcount==0){ //Found free sem
         //init semaphore and vinculate to process
-        s->in_use = 1;
         s->id = s-semtable.sem+1; //plus 1 to avoid id=0
         s->refcount++;
         s->val = init_value;
@@ -52,7 +51,7 @@ semget(int sem_id, int init_value){
   else{ //Search for sem_id
     for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
       if(s->id == sem_id){ //Found sem
-        if(s->in_use){
+        if(s->refcount>0){
           //Search empty place in process semaphores
           for (id = 0; id < MAXSEMPROC && proc->osem[id]!=0; ++id){
             //nothing, just skip
@@ -87,7 +86,7 @@ semfree(int sem_id){
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem
-      if(s->in_use){
+      if(s->refcount>0){ //sem is in use
         //Search if the process has the semaphore
         for (id = 0; id < MAXSEMPROC && proc->osem[id] != s; ++id){
           //nothing, just skip
@@ -98,9 +97,6 @@ semfree(int sem_id){
         }
         //decrement ref count and devinculate process
         s->refcount--;
-        if (s->refcount==0){
-          s->in_use = 0;
-        }
         proc->osem[id] = 0;
         release(&semtable.lock);
         return(0); //exit on succes
@@ -124,7 +120,7 @@ semdown(int sem_id){
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem
-      if(s->in_use){
+      if(s->refcount>0){
         //Search if the process has the semaphore
         for (id = 0; id < MAXSEMPROC && proc->osem[id] != s; ++id){
           //nothing, just skip
@@ -160,7 +156,7 @@ semup(int sem_id){
   //Search for sem_id
   for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
     if(s->id == sem_id){ //Found sem
-      if(s->in_use){
+      if(s->refcount>0){
         //Search if the process has the semaphore
         for (id = 0; id < MAXSEMPROC && proc->osem[id] != s; ++id){
           //nothing, just skip
