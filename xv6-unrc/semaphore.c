@@ -11,6 +11,12 @@
   release(&semtable.lock); \
   return c
 
+//Check that sem_id is inside the proper margins
+#define checksemid(sem_id,c) \
+  if (sem_id < -1 || sem_id >= MAXSEM) \
+    return c
+  
+
 struct {
   struct spinlock lock;
   struct semaphore sem[MAXSEM];
@@ -19,7 +25,7 @@ struct {
 //Search in proc->osems if any points to same as 's'
 //return arrays position if found, otherwise -1 
 static int
-search_in_process_osems(struct semaphore *s){
+searchosems(struct semaphore *s){
   int id;
   for (id = 0; id < MAXSEMPROC && proc->osem[id] != s; ++id){
     //nothing, just skip
@@ -30,20 +36,6 @@ search_in_process_osems(struct semaphore *s){
   return id;
 }
 
-/*
-//Search a sem with id = sem_id in semtable
-//returns pointer to sem if found, otherwise null
-static struct semaphore *
-search_in_semtable(int sem_id){
-  struct semaphore *s;
-  for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
-    if(s->id == sem_id){ //Found sem
-      return s;
-    }
-  }
-  return 0;
-}
-*/
 
 //Creates or return a semaphores descriptor
 //Returns semaphore id or error code
@@ -51,14 +43,12 @@ int
 semget(int sem_id, int init_value){
   int id;
   struct semaphore *s;
-  acquire(&semtable.lock);
-  if (sem_id < -1 || sem_id >= MAXSEM) { //Invalid sem_id argument
-    relandret(-4);
-  } 
   
+  checksemid(sem_id,-4);
+  acquire(&semtable.lock);
   if (sem_id == -1) { //Get new semaphore
     //Search empty place in process semaphores
-    id = search_in_process_osems(0);
+    id = searchosems(0);
     if (id<0){  //process has no free place
       relandret(-2);
     }
@@ -81,7 +71,7 @@ semget(int sem_id, int init_value){
     if (s->refcount==0){ //sem_id is not in use
       relandret(-1);
     }
-    id = search_in_process_osems(0);
+    id = searchosems(0);
     if (id<0){  //process has no free place
       relandret(-2);
     }
@@ -97,13 +87,14 @@ int
 semfree(int sem_id){
   int id;
   struct semaphore *s;
+
+  checksemid(sem_id,-1);
   acquire(&semtable.lock);
-  //Search for sem_id
   s = &semtable.sem[sem_id];
   if (s->refcount==0){ //sem_id is not in use
     relandret(-1);
   }
-  id = search_in_process_osems(s);
+  id = searchosems(s);
   if (id<0){  //process is not vinculated to semaphore
     relandret(-1);
   }
@@ -118,12 +109,14 @@ int
 semdown(int sem_id){
   int id;
   struct semaphore *s;
+
+  checksemid(sem_id,-1);
   acquire(&semtable.lock);
   s = &semtable.sem[sem_id];
   if (s->refcount==0){ //sem_id is not in use
     relandret(-1);
   }
-  id = search_in_process_osems(s);
+  id = searchosems(s);
   if (id<0){  //process is not vinculated to semaphore
    relandret(-1);
   }
@@ -140,12 +133,14 @@ int
 semup(int sem_id){
   int id;
   struct semaphore *s;
+
+  checksemid(sem_id,-1);
   acquire(&semtable.lock);
   s = &semtable.sem[sem_id];
   if (s->refcount==0){ //sem_id is not in use
     relandret(-1);
   }
-  id = search_in_process_osems(s);
+  id = searchosems(s);
   if (id<0){  //process is not vinculated to semaphore
     relandret(-1);
   }
