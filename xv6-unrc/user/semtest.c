@@ -14,7 +14,7 @@ int testget(int *sem){
   if (sem2<0) return sem2;
   semget(-1,1);
   semget(-1,1);
-  // semget(-1,1); causes error (exceded max num of semgets (16))
+  // semget(-1,1); causes error (exceded max num of semgets (MAXSEMPROC))
   sem3 = semget(-1,1);
   printf(1,"sem_id3 is: %d\n",sem3 );
   if (sem3<0) return sem3;
@@ -36,7 +36,7 @@ int main(int argc, char const *argv[])
     for(i=0; i < MAX; i++){
       n++;
     }
-
+    exit();
   }else{
     //father
     for(i=0; i < MAX; i++){
@@ -45,7 +45,7 @@ int main(int argc, char const *argv[])
     wait();
   }
   printf(1,"n= %d\n",n);
-  semfree(sem);
+  if(semfree(sem)<0) exit();
   printf(1,"semfree ok\n");
   exit();
 }
