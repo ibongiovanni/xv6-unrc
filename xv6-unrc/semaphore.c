@@ -3,7 +3,7 @@
 #include "param.h"
 #include "semaphore.h"
 #include "spinlock.h"
-#include "mmu.h" //It is necessary to include it to include proc.h?
+#include "mmu.h"
 #include "proc.h"
 
 //atomice release and return code process
@@ -122,7 +122,7 @@ semdown(int sem_id){
   }
   //decrement sem val or lock caller process
   while(s->val < 1){
-    sleep(&semtable, &semtable.lock);
+    sleep(&semtable.sem, &semtable.lock);
   }
   s->val--;
   relandret(0); //exit on sucess
@@ -146,6 +146,6 @@ semup(int sem_id){
   }
   //increment sem val and wake up sleeping process
   s->val++;
-  wakeup(&semtable);
+  wakeup(&semtable.sem);
   relandret(0); //exit on sucess
 }
