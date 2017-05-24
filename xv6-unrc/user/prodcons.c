@@ -12,21 +12,18 @@
 
 int main(int argc, char const *argv[])
 {
-  int buffuse; // Semaphore to block buffer access
   int items;  // items produced
   int space;  // space remaining
 
   int fid,p,c,pid;
 
   //Get new semaphores
-  if ((buffuse = semget(-1,1))  < 0) exit();
   if ((items = semget(-1,0))  < 0) exit();
   if ((space = semget(-1,BUFFER_SIZE))  < 0) exit();
 
   fid = fork();
   if (fid == 0){
     //Copy semaphores from father
-    if (semget(buffuse,1)  < 0) exit();
     if (semget(items,0)  < 0) exit();
     if (semget(space,BUFFER_SIZE)  < 0) exit();
   }
@@ -52,7 +49,6 @@ int main(int argc, char const *argv[])
   
   wait();
 
-  if(semfree(buffuse)<0) exit();
   if(semfree(items)<0) exit();
   if(semfree(space)<0) exit();
   exit();
