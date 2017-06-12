@@ -86,10 +86,10 @@ trap(struct trapframe *tf)
         if (rcr2() >= proc->sz-(PGSIZE*NSTACKPAGES) ){
           /* can assign more pages */
           allocuvm(proc->pgdir, PGROUNDDOWN(rcr2()), PGROUNDUP(rcr2()));
-          cprintf("::Allocated New Page::\n");
+          //cprintf("::Allocated New Page::\n");
           break;
         }
-        cprintf("stack overflow\n");
+        cprintf("::stack overflow::\n");
       }
     }
     //Do not break, continue to kill the process
