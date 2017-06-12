@@ -125,10 +125,11 @@ int             set_priority(int);
 void            swtch(struct context**, struct context*);
 
 // semaphore.h
-int 			semget(int sem_id, int init_value);
-int 			semfree(int sem_id);
-int 			semdown(int sem_id);
-int 			semup(int sem_id);
+int 			          semget(int sem_id, int init_value);
+int 			          semfree(int sem_id);
+int 			          semdown(int sem_id);
+int 			          semup(int sem_id);
+struct semaphore *  semdup(struct semaphore *s);
 
 // spinlock.c
 void            acquire(struct spinlock*);

@@ -206,6 +206,13 @@ fork(void)
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
+
+  //Clone semaphores open from parent to child
+  for(i = 0; i < MAXSEMPROC; i++)
+    if(proc->osem[i]){
+      np->osem[i] = semdup(proc->osem[i]);
+    }
+
   np->cwd = idup(proc->cwd);
 
   safestrcpy(np->name, proc->name, sizeof(proc->name));

@@ -36,6 +36,18 @@ searchosems(struct semaphore *s){
   return id;
 }
 
+// Increment ref count for semaphore s.
+struct semaphore *
+semdup(struct semaphore *s)
+{
+  acquire(&semtable.lock);
+  if(s->refcount < 1)
+    panic("semdup no used sem");
+  s->refcount++;
+  release(&semtable.lock);
+  return s;
+}
+
 
 //Creates or return a semaphores descriptor
 //Returns semaphore id or error code
