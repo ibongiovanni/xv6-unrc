@@ -1,0 +1,1013 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"CON",
+				"CONSUMERS"
+			],
+			[
+				"sme",
+				"sem"
+			],
+			[
+				"e",
+				"exit"
+			],
+			[
+				"sem",
+				"semtable"
+			],
+			[
+				"retu",
+				"return"
+			],
+			[
+				"re",
+				"return"
+			],
+			[
+				"sys_se",
+				"sys_semdown"
+			],
+			[
+				"sys_sem",
+				"sys_semup"
+			],
+			[
+				"in",
+				"include"
+			],
+			[
+				"MA",
+				"MAXSEM"
+			],
+			[
+				"se",
+				"semtable"
+			],
+			[
+				"a",
+				"argument"
+			],
+			[
+				"leve",
+				"level"
+			],
+			[
+				"pro",
+				"proc"
+			],
+			[
+				"pr",
+				"priorlevel"
+			],
+			[
+				"proc",
+				"process"
+			],
+			[
+				"cp",
+				"cprintf"
+			],
+			[
+				"prc",
+				"process"
+			],
+			[
+				"inc",
+				"incprior"
+			],
+			[
+				"pri",
+				"priorlevel"
+			],
+			[
+				"nex",
+				"next"
+			],
+			[
+				"por",
+				"sys_procstat"
+			],
+			[
+				"rad",
+				"randomWithRange"
+			],
+			[
+				"con",
+				"Consumer"
+			],
+			[
+				"O",
+				"Out"
+			],
+			[
+				"def",
+				"define"
+			],
+			[
+				"STD",
+				"STDOUT_FILENO"
+			],
+			[
+				"pip",
+				"pipedesc"
+			],
+			[
+				"pi",
+				"pipedesc"
+			],
+			[
+				"arg",
+				"argv"
+			],
+			[
+				"de",
+				"define"
+			],
+			[
+				"i",
+				"inc\t#include <…>"
+			],
+			[
+				"ci",
+				"cpid"
+			],
+			[
+				"p",
+				"printf\tprintf …"
+			],
+			[
+				"ar",
+				"argv"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "xv6-unrc/x86.h",
+			"settings":
+			{
+				"buffer_size": 3272,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/exec.c",
+			"settings":
+			{
+				"buffer_size": 2371,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/vm.c",
+			"settings":
+			{
+				"buffer_size": 9580,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/trap.c",
+			"settings":
+			{
+				"buffer_size": 2774,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/nacho/Descargas/J7Z/Linux/Build/Makefile",
+			"settings":
+			{
+				"buffer_size": 15543,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/trapasm.S",
+			"settings":
+			{
+				"buffer_size": 557,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/proc.c",
+			"settings":
+			{
+				"buffer_size": 12144,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/main.c",
+			"settings":
+			{
+				"buffer_size": 3388,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/proc.h",
+			"settings":
+			{
+				"buffer_size": 3192,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/swtch.S",
+			"settings":
+			{
+				"buffer_size": 461,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/initcode.S",
+			"settings":
+			{
+				"buffer_size": 423,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/traps.h",
+			"settings":
+			{
+				"buffer_size": 1548,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "xv6-unrc/mmu.h",
+			"settings":
+			{
+				"buffer_size": 9096,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/Makefile/Make.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 172.0,
+		"last_filter": "insta",
+		"selected_items":
+		[
+			[
+				"insta",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 449.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/home/nacho/host/cfltl/ltsa/CF-LTSA/META-INF/MANIFEST.MF",
+		"/home/nacho/Descargas/J7Z/Linux/Build/Install.txt",
+		"/home/nacho/Descargas/ltsatool/ltsatool/README.txt",
+		"/home/nacho/.cache/.fr-MUvEn8/CFParser/lex.jlex",
+		"/home/nacho/Descargas/J7Z/Linux/Bin/J7Z.sh",
+		"/home/nacho/Descargas/J7Z/Dist/README.TXT",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/vectors.S",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/mmu.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/Makefile",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/exec.c",
+		"/home/nacho/Escritorio/so/P1/e9/system.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/dot-bochsrc",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/mp.c",
+		"/home/nacho/Escritorio/so/P3/e5/read-mmap.c",
+		"/home/nacho/Escritorio/so/P3/e5/mmap.c",
+		"/home/nacho/Escritorio/so/P3/e5/mmapped.bin",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/fs.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/user.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/string.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/stressfs.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/sysfile.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/syscall.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/sysproc.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/defs.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/file.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/param.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/semaphore.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/fcntl.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/fs.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/semaphore.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/prodcons.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/semtest2.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/proc.c",
+		"/home/nacho/Escritorio/xv6-unrc/proj3.patch",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/sh.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/semtest.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/printf.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/cat.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/ulib.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/types.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/syscall.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/usys.S",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/syscall.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/zombie.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/quantumtest.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/ls.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/proc.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/forktest.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/trap.c",
+		"/home/nacho/Escritorio/so/P2/e7/pthreads_example.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/file.h",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/console.c",
+		"/home/nacho/Escritorio/so/P2/e6/sem.h",
+		"/home/nacho/Escritorio/so/P2/e6/sem.c",
+		"/home/nacho/Escritorio/so/P2/e6/example/sem.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/main.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/spinlock.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/spinlock.h",
+		"/home/nacho/Escritorio/so/P2/e7/pthreads_example2.c",
+		"/home/nacho/Escritorio/so/P2/e4/pthreads_example.c",
+		"/home/nacho/Escritorio/so/P2/e2/Producer.java",
+		"/home/nacho/Escritorio/so/P2/e2/Buffer.java",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/usertests.c",
+		"/home/nacho/Escritorio/xv6-unrc/proj2.patch",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/TRICKS",
+		"/home/nacho/Escritorio/so/P2/e4/lock/lock.h",
+		"/home/nacho/Escritorio/so/P2/e4/lock/lock.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/patchs/proj1-Bongiovanni.patch",
+		"/home/nacho/Escritorio/so/xv6-unrc/patchs/proj0.patch",
+		"/home/nacho/Escritorio/so/xv6-unrc/mydiffpatch",
+		"/home/nacho/Escritorio/so/P2/e2/Consumer.java",
+		"/home/nacho/Escritorio/so/xv6-unrc/DiffPatch.txt",
+		"/home/nacho/so/P2/e4/pthreads_example.c",
+		"/home/nacho/so/P2/e4/lock/xchg.c",
+		"/home/nacho/so/P2/e4/lock/lock.h",
+		"/home/nacho/so/P2/e4/lock/lock.c",
+		"/home/nacho/.bashrc",
+		"/home/nacho/proj1.patch",
+		"/home/nacho/proj2.patch",
+		"/home/nacho/Escritorio/compl/while/examples/append.while",
+		"/home/nacho/Escritorio/compl/while/examples/store.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/test/teststore.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/enumtrees2.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/idbasic.while",
+		"/home/nacho/Escritorio/compl/while/examples/test-lookupdate.xwhile",
+		"/home/nacho/so/P2/e4/xchg.c",
+		"/home/nacho/so/P2/e2/Consumer.java",
+		"/home/nacho/so/P2/e2/Producer.java",
+		"/home/nacho/so/P2/e2/Buffer.java",
+		"/home/nacho/so/P2/e1/number.txt",
+		"/home/nacho/so/P2/e1/e1.c",
+		"/home/nacho/Escritorio/compl/while/examples/interp.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/sum1.while",
+		"/home/nacho/Escritorio/compl/while/examples/sum2.while",
+		"/home/nacho/Escritorio/compl/while/examples/interp2.xwhile",
+		"/home/nacho/Escritorio/so/P1/e10/mypipe.c",
+		"/home/nacho/Escritorio/so/P1/e10/ls2.txt",
+		"/home/nacho/Escritorio/so/P1/e10/ls.txt",
+		"/home/nacho/Escritorio/compl/while/examples/ej1.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/enumtrees.xwhile",
+		"/home/nacho/Escritorio/compl/while/examples/base.while",
+		"/home/nacho/Escritorio/compl/while/examples/base.xwhile",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/myprog.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/fact.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/user/init.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/types.h",
+		"/home/nacho/Escritorio/so/P1/e12/invert.c",
+		"/home/nacho/Escritorio/so/P1/e10/operators.c",
+		"/home/nacho/Escritorio/so/P1/e14/exit_42.asm",
+		"/home/nacho/Escritorio/so/P1/e10/test/in.txt",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/uart.c",
+		"/home/nacho/Escritorio/xv6-unrc/xv6-unrc/timer.c",
+		"/home/nacho/Escritorio/so/P1/test/string.c",
+		"/home/nacho/Escritorio/so/P1/test/pipe.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/user/init.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/proc.h",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/swtch.S",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/initcode.S",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/proc.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/main.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/mkfs.c",
+		"/home/nacho/so/P1/e12/invert.c",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/BUGS",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/initcode.d",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/initcode.asm",
+		"/home/nacho/Escritorio/so/xv6-unrc/xv6-unrc/initcode",
+		"/home/nacho/so/P1/e10/mypipe.c",
+		"/home/nacho/host/lsys/lsys.l"
+	],
+	"find":
+	{
+		"height": 34.0
+	},
+	"find_in_files":
+	{
+		"height": 90.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"vectors",
+			", )",
+			"search_in_process_osems",
+			"Sem_id",
+			"n[0]",
+			"!s->refcount>0",
+			"s->in_use",
+			"struct semaphore s;",
+			"adquire",
+			"OBJS",
+			"spinlock",
+			"decprio",
+			"= RUNNA",
+			"->name",
+			"enqueue",
+			"decprior",
+			"allocproc(",
+			"allocproc()",
+			"ptable.proc",
+			"acquire",
+			"->state != RUNNABLE",
+			"ptable",
+			"scheduler",
+			"PS1",
+			"Producer",
+			"update",
+			"duler(",
+			"scheduler(",
+			"schedu",
+			"proc proc",
+			"scheduler(",
+			"wait(",
+			"wakeup",
+			"EMBR",
+			"#",
+			"6",
+			"scheduler",
+			"pipefd"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			")",
+			"searchosems",
+			"sem_id",
+			"n",
+			"s->refcount==0",
+			"s->refcount>0",
+			"struct semaphore *s;",
+			"acquire",
+			"Consumer",
+			"p"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 3,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "xv6-unrc/x86.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3272,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2705,
+								2705
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1210.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "xv6-unrc/exec.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2371,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 78.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "xv6-unrc/vm.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9580,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6266,
+								6266
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": -0.0,
+						"translation.y": 2574.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 12,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "xv6-unrc/trap.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2774,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1717,
+								1717
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 312.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "/home/nacho/Descargas/J7Z/Linux/Build/Makefile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15543,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Makefile/Makefile.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 1865.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "xv6-unrc/trapasm.S",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 557,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								330,
+								330
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "xv6-unrc/proc.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 12144,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3367,
+								3367
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4181.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "xv6-unrc/main.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3388,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1564,
+								1564
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": -0.0,
+						"translation.y": 438.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "xv6-unrc/proc.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3192,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1939,
+								1939
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "xv6-unrc/swtch.S",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 461,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 10,
+					"file": "xv6-unrc/initcode.S",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 423,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/R/R.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 11,
+					"file": "xv6-unrc/traps.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1548,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								818,
+								818
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 12,
+					"file": "xv6-unrc/mmu.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9096,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3355,
+								3355
+							]
+						],
+						"settings":
+						{
+							"history_list_is_closing": true,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1911.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 21.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.510294117647,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 200.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"output.unsaved_changes":
+	{
+		"height": 88.0
+	},
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
+	"project": "xv6.sublime-project",
+	"replace":
+	{
+		"height": 62.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 150.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
