@@ -176,6 +176,7 @@ UPROGS=\
 	_quantumtest\
 	_semtest\
 	_semtest2\
+	_stacktest\
 	_prodcons\
 
 fs.img: mkfs README $(UPROGS)
