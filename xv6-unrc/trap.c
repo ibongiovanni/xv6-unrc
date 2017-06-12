@@ -78,8 +78,22 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
 
-  
-   
+  case T_STACK:
+  case T_PGFLT:
+    if (proc > 0 ){/* user space? */
+      if ((proc->tf->esp - rcr2()) < 8 ){
+        /* stack overflow detected */
+        if (rcr2() >= proc->sz-(PGSIZE*NSTACKPAGES) ){
+          /* can assign more pages */
+          allocuvm(proc->pgdir, PGROUNDDOWN(rcr2()), PGROUNDUP(rcr2()));
+          cprintf("::Allocated New Page::\n");
+          break;
+        }
+        cprintf("stack overflow\n");
+      }
+    }
+    //Do not break, continue to kill the process
+
   //PAGEBREAK: 13
   default:
     if(proc == 0 || (tf->cs&3) == 0){

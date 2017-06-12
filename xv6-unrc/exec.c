@@ -53,9 +53,9 @@ exec(char *path, char **argv)
   end_op();
   ip = 0;
 
-  // Allocate two pages at the next page boundary.
-  // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz+PGSIZE);
+  // Grown the process size to keep NSTACKPAGES and one virtual
+  // page for detect overflow
+  sz = PGROUNDUP(sz) + PGSIZE*(NSTACKPAGES);
   if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
     goto bad;
   //clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
