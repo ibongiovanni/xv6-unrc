@@ -22,11 +22,13 @@ int main(int argc, char const *argv[])
   if ((space = semget(-1,BUFFER_SIZE))  < 0) exit();
 
   fid = fork();
+  /*
   if (fid == 0){
     //Copy semaphores from father
     if (semget(items,0)  < 0) exit();
     if (semget(space,BUFFER_SIZE)  < 0) exit();
   }
+  */
   pid = getpid();
 
   if (fid > 0){

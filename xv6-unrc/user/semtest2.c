@@ -27,7 +27,7 @@ int main(int argc, char const *argv[])
   if ( write(fd, a, sizeof(a)) < 0) exit();
   printf(1,"write ok\n");
   fid = fork();
-  if(fid==0) semget(sem,0);
+  //if(fid==0) semget(sem,0);
   for(i=0; i < MAX; i++){
     if (fid == 0) printf(1,"child ");
     else          printf(1,"father ");
