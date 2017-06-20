@@ -26,3 +26,4 @@
 #define SYS_semfree 25
 #define SYS_semup 26
 #define SYS_semdown 27
+#define SYS_fseek 28

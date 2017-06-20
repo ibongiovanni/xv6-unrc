@@ -104,6 +104,7 @@ extern int sys_semget(void);
 extern int sys_semfree(void);
 extern int sys_semup(void);
 extern int sys_semdown(void);
+extern int sys_fseek(void);
 
 
 static int (*syscalls[])(void) = {
@@ -134,6 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_semfree]   sys_semfree,
 [SYS_semup]   sys_semup,
 [SYS_semdown]   sys_semdown,
+[SYS_fseek]   sys_fseek,
 };
 
 void

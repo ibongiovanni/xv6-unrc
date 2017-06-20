@@ -179,6 +179,7 @@ UPROGS=\
 	_semtest2\
 	_stacktest\
 	_prodcons\
+	_seektest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
