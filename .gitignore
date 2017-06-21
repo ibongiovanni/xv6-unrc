@@ -42,3 +42,7 @@ _usertests
 _wc
 _zombie
 _*
+
+
+#ignore sublime-text unnessary files
+*.sublime-workspace
