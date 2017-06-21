@@ -27,3 +27,6 @@
 #define SYS_semup 26
 #define SYS_semdown 27
 #define SYS_fseek 28
+#define SYS_flock 28
+#define SYS_funlock 28
+#define SYS_rename 28

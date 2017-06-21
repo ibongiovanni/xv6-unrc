@@ -30,6 +30,9 @@ int semfree(int);
 int semup(int);
 int semdown(int);
 int fseek(int, int);
+int flock(int);
+int funlock(int);
+int rename(const char*,const char*);
 
 // ulib.c
 int stat(char*, struct stat*);

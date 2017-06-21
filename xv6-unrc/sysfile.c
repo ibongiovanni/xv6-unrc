@@ -99,6 +99,21 @@ sys_fseek(void){
 }
 
 int
+sys_flock(void){
+  return 0;
+}
+
+int
+sys_funlock(void){
+  return 0;
+}
+
+int
+sys_rename(void){
+  return 0;
+}
+
+int
 sys_close(void)
 {
   int fd;

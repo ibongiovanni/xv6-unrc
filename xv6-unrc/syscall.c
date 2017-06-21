@@ -105,6 +105,9 @@ extern int sys_semfree(void);
 extern int sys_semup(void);
 extern int sys_semdown(void);
 extern int sys_fseek(void);
+extern int sys_flock(void);
+extern int sys_funlock(void);
+extern int sys_rename(void);
 
 
 static int (*syscalls[])(void) = {
@@ -136,6 +139,9 @@ static int (*syscalls[])(void) = {
 [SYS_semup]   sys_semup,
 [SYS_semdown]   sys_semdown,
 [SYS_fseek]   sys_fseek,
+[SYS_flock]   sys_flock,
+[SYS_funlock]   sys_funlock,
+[SYS_rename]   sys_rename,
 };
 
 void
