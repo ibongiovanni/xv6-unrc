@@ -100,16 +100,25 @@ sys_fseek(void){
 
 int
 sys_flock(void){
-  return 0;
+  struct file *f;
+
+  if(argfd(0, 0, &f) < 0 )
+    return -1;
+  return filelock(f);
 }
 
 int
 sys_funlock(void){
-  return 0;
+  struct file *f;
+
+  if(argfd(0, 0, &f) < 0 )
+    return -1;
+  return fileunlock(f);
 }
 
 int
 sys_rename(void){
+  //idea: use link & unlink would be possible?
   return 0;
 }
 

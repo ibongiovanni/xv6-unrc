@@ -174,3 +174,31 @@ fileseek(struct file *f, int n)
   }
   panic("fileseek");
 }
+
+int
+filelock(struct file *f){
+  acquire(&ftable.lock);
+  //checks
+  if(f == 0 || f->ref < 1)
+    panic("filelock");
+  //main code
+  while(f->locked){ //wait for file to be unlocked
+    sleep(f, &ftable.lock);
+  }
+  f->locked = 1; //lock file
+  release(&ftable.lock);
+  return 0;
+}
+
+int
+fileunlock(struct file *f){
+  acquire(&ftable.lock);
+  //checks
+  if(f == 0 || f->ref < 1)
+    panic("fileunlock");
+  //main code
+  f->locked = 0; //unlock file
+  wakeup(f); //wake up other processes
+  release(&ftable.lock);
+  return 0;
+}

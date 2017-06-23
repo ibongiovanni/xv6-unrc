@@ -34,6 +34,8 @@ int             fileread(struct file*, char*, int n);
 int             filestat(struct file*, struct stat*);
 int             filewrite(struct file*, char*, int n);
 int             fileseek(struct file *f, int n);
+int             filelock(struct file *f);
+int             fileunlock(struct file *f);
 
 // fs.c
 void            readsb(int dev, struct superblock *sb);
