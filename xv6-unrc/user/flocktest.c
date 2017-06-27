@@ -1,27 +1,34 @@
+/*
+  User Program to test flock & funlock syscalls.
+  Use:
+   > flocktest [FILE]
+   FILE: Output file
+*/
+
+
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
 #include "fcntl.h"
 
+#define MAX 10
+
 void
 locktest(int fd){
   int i,n;
   char buf[512];
-  for (i = 0; i < 100; ++i)
+  for (i = 0; i < MAX; ++i)
   {
     
     flock(fd);
-    //printf(1,"pid:%d enter critic zone\n",getpid());
     if ( fseek(fd, 0) < 0) exit();
     read(fd, buf, sizeof(buf));
-    //printf(1,"pid:%d readed:%d bytes\n",getpid(),l);
     n = atoi(buf);
 
     if ( fseek(fd, 0) < 0) exit();
     printf(fd, "%d",++n);
-    if ( fseek(fd, 0) < 0) exit();
-    //printf(1,"pid:%d exit critic zone\n\n",getpid());  
+    if ( fseek(fd, 0) < 0) exit(); 
     funlock(fd);
   }
 }
@@ -41,12 +48,6 @@ int main(int argc, char const *argv[])
   printf(fd, "%d",0); //initialize with 0
   
   //Create multiple processes
-  pid=0;
-  /*while(i<3 && pid==0){
-    pid= fork();
-    i++;
-    printf(1,"fork in pid:%d\n",getpid() );
-  }*/
   pid=fork();
   
   //Run test simultaneously
