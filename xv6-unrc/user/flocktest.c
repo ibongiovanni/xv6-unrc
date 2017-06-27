@@ -1,5 +1,8 @@
 /*
   User Program to test flock & funlock syscalls.
+  Create CHILDS processes that work concurrently
+  over a file (FILE) reading an int value and writing
+  its succesor CICLES times.
   Use:
    > flocktest [FILE]
    FILE: Output file
@@ -12,13 +15,14 @@
 #include "fs.h"
 #include "fcntl.h"
 
-#define MAX 10
+#define CICLES 10
+#define CHILDS 10
 
 void
 locktest(int fd){
   int i,n;
   char buf[512];
-  for (i = 0; i < MAX; ++i)
+  for (i = 0; i < CICLES; ++i)
   {
     
     flock(fd);
@@ -35,7 +39,7 @@ locktest(int fd){
 
 int main(int argc, char const *argv[])
 {
-  int fd,pid,count;
+  int fd,pid,count,kid;
   char buf[512];
   char *path; 
   
@@ -48,14 +52,25 @@ int main(int argc, char const *argv[])
   printf(fd, "%d",0); //initialize with 0
   
   //Create multiple processes
-  pid=fork();
-  
-  //Run test simultaneously
-  locktest(fd);
+  for (kid = 0; kid < CHILDS; ++kid) {
+    pid = fork();
+    if(pid < 0){
+        exit();
+    }
+    else if (pid > 0){
+        /* Parent process */
+    }
+    else{
+        /* Child process */
+        //Run test simultaneously
+        locktest(fd);
+        exit();
+    }
+  }
 
-  //Close processes
-  if(pid==0) exit();
-  wait();
+  for (kid = 0; kid < CHILDS; ++kid) {
+      wait(); // kids could be ready in any order
+  }
 
   //Show Result
   if ( fseek(fd, 0) < 0) exit();  
