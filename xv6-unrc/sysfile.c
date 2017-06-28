@@ -118,7 +118,21 @@ sys_funlock(void){
 
 int
 sys_rename(void){
-  //idea: use link & unlink would be possible?
+  //char name[DIRSIZ], *new, *old;
+  //struct inode *dp, *ip;
+  
+  //get args
+
+  //Check that old exist
+  
+  //check old type (file,dir)
+
+  //check new  path exist??
+
+  //link (create) new
+
+  //unlink old
+
   return 0;
 }
 
