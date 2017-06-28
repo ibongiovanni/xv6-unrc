@@ -181,6 +181,7 @@ UPROGS=\
 	_prodcons\
 	_seektest\
 	_flocktest\
+	_rename\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
