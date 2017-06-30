@@ -117,106 +117,6 @@ sys_funlock(void){
 }
 
 int
-sys_rename(void){
-  /*Error Code:
-    -1: old does not exist
-    -2: new's parent does not exist
-    -3: cannot link to new
-  */
-  char name[DIRSIZ], *new, *old;
-  struct inode *dp, *ip;
-  char errc;
-  struct dirent de;
-  uint off;
-
-  //get argsv
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
-    return -1;
-
-  begin_op();
-  //Check that old exist
-  if((ip = namei(old)) == 0){
-    end_op();
-    return -1;
-  }
-  
-  //check old type (file,dir)
-
-  //check new  path exist??
-  if((dp = nameiparent(new, name)) == 0)
-    errc = -2;
-    goto bad;
-
-  //link new
-  ilock(ip);
-  ip->nlink++;
-  iupdate(ip);
-  iunlock(ip);
-
-  ilock(dp);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
-    iunlockput(dp);
-    errc = -3;
-    goto bad;
-  }
-  iunlockput(dp);
-  iput(ip);
-
-  //unlink old
-  if((dp = nameiparent(old, name)) == 0){
-    end_op();
-    return -1;
-  }
-
-  ilock(dp);
-
-  // Cannot unlink "." or "..".
-  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
-    goto bad_;
-
-  if((ip = dirlookup(dp, name, &off)) == 0)
-    goto bad_;
-  ilock(ip);
-
-  if(ip->nlink < 1)
-    panic("rename: nlink < 1");
-  if(ip->type == T_DIR && !isdirempty(ip)){
-    iunlockput(ip);
-    goto bad_;
-  }
-
-  memset(&de, 0, sizeof(de));
-  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-    panic("rename: writei");
-  if(ip->type == T_DIR){
-    dp->nlink--;
-    iupdate(dp);
-  }
-  iunlockput(dp);
-
-  ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
-
-  //successful exit
-  end_op();
-  return 0;
-
-bad:
-  ilock(ip);
-  ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
-  end_op();
-  return errc;
-
-bad_:
-  iunlockput(dp);
-  end_op();
-  return -1;
-}
-
-int
 sys_close(void)
 {
   int fd;
@@ -362,6 +262,106 @@ bad:
   iunlockput(dp);
   end_op();
   return -1;
+}
+
+int
+sys_rename(void){
+  /*Error Code:
+    -1: old does not exist
+    -2: cannot link to new
+    -3: cannot unlink old
+  */
+  char name[DIRSIZ], *new, *old;
+  struct inode *dp, *ip;
+  struct dirent de;
+  uint off;
+
+  //get args
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+    return -1;
+
+  begin_op();
+  //Check that old exist
+  if((ip = namei(old)) == 0){
+    end_op();
+    return -1;
+  }
+  
+  
+  //link new
+  ilock(ip);
+  if(ip->type == T_DIR){
+    iunlockput(ip);
+    end_op();
+    return -2;
+  }
+  ip->nlink++;
+  iupdate(ip);
+  iunlock(ip);
+  
+   //check new  path exist
+  if((dp = nameiparent(new, name)) == 0)
+    goto bad;
+
+  ilock(dp);
+  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+    iunlockput(dp);
+    goto bad;
+  }
+  iunlockput(dp);
+  iput(ip);
+
+  //unlink old
+  if((dp = nameiparent(old, name)) == 0){
+    end_op();
+    return -3;
+  }
+
+  ilock(dp);
+
+  // Cannot unlink "." or "..".
+  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
+    goto bad_;
+
+  if((ip = dirlookup(dp, name, &off)) == 0)
+    goto bad_;
+  ilock(ip);
+
+  if(ip->nlink < 1)
+    panic("rename: nlink < 1");
+  if(ip->type == T_DIR && !isdirempty(ip)){
+    iunlockput(ip);
+    goto bad_;
+  }
+
+  memset(&de, 0, sizeof(de));
+  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+    panic("rename: writei");
+  if(ip->type == T_DIR){
+    dp->nlink--;
+    iupdate(dp);
+  }
+  iunlockput(dp);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+
+  //successful exit
+  end_op();
+  return 0;
+
+bad:
+  ilock(ip);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+  return -2;
+
+bad_:
+  iunlockput(dp);
+  end_op();
+  return -3;
 }
 
 static struct inode *
