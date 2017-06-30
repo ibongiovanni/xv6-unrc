@@ -4,8 +4,6 @@
 #include "fs.h"
 #include "fcntl.h"
 
-#define MAX 10
-
 int main(int argc, char const *argv[])
 {
   char *oldpath,*newpath;
