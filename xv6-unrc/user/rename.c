@@ -18,10 +18,12 @@ int main(int argc, char const *argv[])
   newpath=(char*)argv[2];
 
   ec=rename(oldpath, newpath);
-  if( ec < 0){
-    printf(2,"rename: ");
-    if(ec==-1) printf(2,"'%s' does not exist.\n",oldpath);
-    if(ec==-2) printf(2,"cannot move '%s' to '%s'.\n",oldpath,newpath);
+  if( ec < 0)
+  {
+    printf(2,"rename: error");
+    if(ec==-1) printf(2,": '%s' does not exist",oldpath);
+    if(ec==-2) printf(2,": cannot rename '%s' to '%s'",oldpath,newpath);
+    printf(2,".\n");
     exit();
   }
   exit();
