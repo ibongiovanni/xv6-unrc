@@ -1,0 +1,1608 @@
+diff -rupN xv6-unrc-orig/defs.h xv6-unrc/defs.h
+--- xv6-unrc-orig/defs.h	2017-05-03 13:59:00.609649404 -0300
++++ xv6-unrc/defs.h	2017-07-01 11:11:14.201018999 -0300
+@@ -5,6 +5,7 @@ struct inode;
+ struct pipe;
+ struct proc;
+ struct rtcdate;
++struct semaphore;
+ struct spinlock;
+ struct stat;
+ struct superblock;
+@@ -32,6 +33,9 @@ void            fileinit(void);
+ int             fileread(struct file*, char*, int n);
+ int             filestat(struct file*, struct stat*);
+ int             filewrite(struct file*, char*, int n);
++int             fileseek(struct file *f, int n);
++int             filelock(struct file *f);
++int             fileunlock(struct file *f);
+ 
+ // fs.c
+ void            readsb(int dev, struct superblock *sb);
+@@ -118,10 +122,18 @@ void            userinit(void);
+ int             wait(void);
+ void            wakeup(void*);
+ void            yield(void);
++int             set_priority(int);
+ 
+ // swtch.S
+ void            swtch(struct context**, struct context*);
+ 
++// semaphore.h
++int 			          semget(int sem_id, int init_value);
++int 			          semfree(int sem_id);
++int 			          semdown(int sem_id);
++int 			          semup(int sem_id);
++struct semaphore *  semdup(struct semaphore *s);
++
+ // spinlock.c
+ void            acquire(struct spinlock*);
+ void            getcallerpcs(void*, uint*);
+diff -rupN xv6-unrc-orig/exec.c xv6-unrc/exec.c
+--- xv6-unrc-orig/exec.c	2017-05-03 13:59:00.609649404 -0300
++++ xv6-unrc/exec.c	2017-07-01 11:11:14.201018999 -0300
+@@ -53,12 +53,12 @@ exec(char *path, char **argv)
+   end_op();
+   ip = 0;
+ 
+-  // Allocate two pages at the next page boundary.
+-  // Make the first inaccessible.  Use the second as the user stack.
+-  sz = PGROUNDUP(sz);
+-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
++  // Grown the process size to keep NSTACKPAGES and one virtual
++  // page for detect overflow
++  sz = PGROUNDUP(sz) + PGSIZE*(NSTACKPAGES);
++  if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
+     goto bad;
+-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
++  //clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+   sp = sz;
+ 
+   // Push argument strings, prepare rest of stack in ustack.
+diff -rupN xv6-unrc-orig/file.c xv6-unrc/file.c
+--- xv6-unrc-orig/file.c	2017-05-03 13:59:00.609649404 -0300
++++ xv6-unrc/file.c	2017-07-01 11:11:14.201018999 -0300
+@@ -22,7 +22,7 @@ fileinit(void)
+ }
+ 
+ // Allocate a file structure.
+-struct file*
++struct file *
+ filealloc(void)
+ {
+   struct file *f;
+@@ -40,7 +40,7 @@ filealloc(void)
+ }
+ 
+ // Increment ref count for file f.
+-struct file*
++struct file *
+ filedup(struct file *f)
+ {
+   acquire(&ftable.lock);
+@@ -154,3 +154,51 @@ filewrite(struct file *f, char *addr, in
+   panic("filewrite");
+ }
+ 
++//Change file offset to n.
++int
++fileseek(struct file *f, int n)
++{
++  if(f->readable == 0)
++    return -1;
++  if(f->type == FD_PIPE)
++    return -1;
++  if(n<0)
++    return -1;
++  if(f->type == FD_INODE){
++    ilock(f->ip);
++    if (n > f->ip->size)
++      return -1;
++    f->off = n;
++    iunlock(f->ip);
++    return 0;
++  }
++  panic("fileseek");
++}
++
++int
++filelock(struct file *f){
++  acquire(&ftable.lock);
++  //checks
++  if(f == 0 || f->ref < 1)
++    panic("filelock");
++  //main code
++  while(f->locked){ //wait for file to be unlocked
++    sleep(f, &ftable.lock);
++  }
++  f->locked = 1; //lock file
++  release(&ftable.lock);
++  return 0;
++}
++
++int
++fileunlock(struct file *f){
++  acquire(&ftable.lock);
++  //checks
++  if(f == 0 || f->ref < 1)
++    panic("fileunlock");
++  //main code
++  f->locked = 0; //unlock file
++  wakeup(f); //wake up other processes
++  release(&ftable.lock);
++  return 0;
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/file.h xv6-unrc/file.h
+--- xv6-unrc-orig/file.h	2017-05-03 13:59:00.609649404 -0300
++++ xv6-unrc/file.h	2017-07-01 11:11:14.205018999 -0300
+@@ -6,6 +6,7 @@ struct file {
+   struct pipe *pipe;
+   struct inode *ip;
+   uint off;
++  char locked;
+ };
+ 
+ 
+diff -rupN xv6-unrc-orig/fs.c xv6-unrc/fs.c
+--- xv6-unrc-orig/fs.c	2017-05-03 13:59:00.613649404 -0300
++++ xv6-unrc/fs.c	2017-07-01 11:11:14.205018999 -0300
+@@ -172,7 +172,7 @@ static struct inode* iget(uint dev, uint
+ //PAGEBREAK!
+ // Allocate a new inode with the given type on device dev.
+ // A free inode has a type of zero.
+-struct inode*
++struct inode *
+ ialloc(uint dev, short type)
+ {
+   int inum;
+@@ -219,7 +219,7 @@ iupdate(struct inode *ip)
+ // Find the inode with number inum on device dev
+ // and return the in-memory copy. Does not lock
+ // the inode and does not read it from disk.
+-static struct inode*
++static struct inode *
+ iget(uint dev, uint inum)
+ {
+   struct inode *ip, *empty;
+@@ -254,7 +254,7 @@ iget(uint dev, uint inum)
+ 
+ // Increment reference count for ip.
+ // Returns ip to enable ip = idup(ip1) idiom.
+-struct inode*
++struct inode *
+ idup(struct inode *ip)
+ {
+   acquire(&icache.lock);
+@@ -504,7 +504,7 @@ namecmp(const char *s, const char *t)
+ 
+ // Look for a directory entry in a directory.
+ // If found, set *poff to byte offset of entry.
+-struct inode*
++struct inode *
+ dirlookup(struct inode *dp, char *name, uint *poff)
+ {
+   uint off, inum;
+@@ -604,7 +604,7 @@ skipelem(char *path, char *name)
+ // If parent != 0, return the inode for the parent and copy the final
+ // path element into name, which must have room for DIRSIZ bytes.
+ // Must be called inside a transaction since it calls iput().
+-static struct inode*
++static struct inode *
+ namex(char *path, int nameiparent, char *name)
+ {
+   struct inode *ip, *next;
+@@ -639,14 +639,14 @@ namex(char *path, int nameiparent, char
+   return ip;
+ }
+ 
+-struct inode*
++struct inode *
+ namei(char *path)
+ {
+   char name[DIRSIZ];
+   return namex(path, 0, name);
+ }
+ 
+-struct inode*
++struct inode *
+ nameiparent(char *path, char *name)
+ {
+   return namex(path, 1, name);
+diff -rupN xv6-unrc-orig/Makefile xv6-unrc/Makefile
+--- xv6-unrc-orig/Makefile	2017-05-03 13:59:00.593649404 -0300
++++ xv6-unrc/Makefile	2017-07-01 11:11:14.201018999 -0300
+@@ -15,6 +15,7 @@ OBJS = \
+ 	picirq.o\
+ 	pipe.o\
+ 	proc.o\
++	semaphore.o\
+ 	spinlock.o\
+ 	string.o\
+ 	swtch.o\
+@@ -157,6 +158,7 @@ mkfs: mkfs.c fs.h
+ .PRECIOUS: %.o
+ 
+ UPROGS=\
++	_badsemtest\
+ 	_cat\
+ 	_echo\
+ 	_forktest\
+@@ -172,6 +174,14 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_quantumtest\
++	_semtest\
++	_semtest2\
++	_stacktest\
++	_prodcons\
++	_seektest\
++	_flocktest\
++	_rename\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+diff -rupN xv6-unrc-orig/mkfs.c xv6-unrc/mkfs.c
+--- xv6-unrc-orig/mkfs.c	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/mkfs.c	2017-04-18 20:20:28.675242680 -0300
+@@ -11,7 +11,7 @@
+ #include "stat.h"
+ #include "param.h"
+ 
+-#define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
++//#define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
+ 
+ int nblocks = (995-LOGSIZE);
+ int nlog = LOGSIZE;
+diff -rupN xv6-unrc-orig/param.h xv6-unrc/param.h
+--- xv6-unrc-orig/param.h	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/param.h	2017-07-01 11:11:14.205018999 -0300
+@@ -10,4 +10,8 @@
+ #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
+ #define LOGSIZE      (MAXOPBLOCKS*3)  // max data sectors in on-disk log
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+-
++#define QUANTUM 	   10	 // max ticks a process has to use cpu
++#define NLEVELS 	   4 	 // number of priority levels 
++#define MAXSEM 	 	   20  // max semaphores on system 
++#define MAXSEMPROC   5   // max semaphores per process 
++#define NSTACKPAGES  4	 // maximum stack pages per process 
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/proc.c xv6-unrc/proc.c
+--- xv6-unrc-orig/proc.c	2017-05-03 13:59:00.621649404 -0300
++++ xv6-unrc/proc.c	2017-07-01 11:11:14.205018999 -0300
+@@ -6,12 +6,63 @@
+ #include "x86.h"
+ #include "proc.h"
+ #include "spinlock.h"
++#include "semaphore.h"
++
++#define NULL 0
++#define incprior(p) if (p->priorlevel>0) p->priorlevel--
++#define decprior(p) if (p->priorlevel<(NLEVELS-1)) p->priorlevel++
++
++struct level {
++  struct proc *first;
++  struct proc *last;
++};
+ 
+ struct {
+   struct spinlock lock;
+   struct proc proc[NPROC];
++  struct level level[NLEVELS];
+ } ptable;
+ 
++
++//Update last element from level
++static void 
++enqueue(struct level *l, struct proc *p){
++  if (p->state != RUNNABLE){
++    panic("enqueue no RUNNABLE process");
++  }
++  if (p->priorlevel<0 || p->priorlevel>NLEVELS)
++    panic("invalid priorlevel");
++  p->next = NULL;
++  if (l->first == NULL && l->last == NULL){
++    l->first = p;
++    l->last = p;
++  }else{
++    l->last->next = p;
++    l->last = p;
++  }
++}
++
++//Update first element and return previous value.
++//if no process return NULL
++static struct proc* 
++dequeue(struct level *l){
++  struct proc *p;
++
++  if (l->first == NULL && l->last == NULL)
++    return NULL;
++  if (l->first->state != RUNNABLE){
++    cprintf("deq proc %d : %s in state %d\n",l->first->pid,l->first->name,l->first->state);
++    panic("dequeue no RUNNABLE process");
++  }
++  p = l->first;
++
++  l->first = l->first->next;
++  if (l->first == NULL)
++    l->last = l->first;
++
++  return p;
++}
++
+ static struct proc *initproc;
+ 
+ int nextpid = 1;
+@@ -47,6 +98,8 @@ allocproc(void)
+ found:
+   p->state = EMBRYO;
+   p->pid = nextpid++;
++  p->priorlevel = 0;
++  p->next = NULL;
+   release(&ptable.lock);
+ 
+   // Allocate kernel stack.
+@@ -100,6 +153,7 @@ userinit(void)
+   p->cwd = namei("/");
+ 
+   p->state = RUNNABLE;
++  enqueue(&ptable.level[p->priorlevel],p);
+ }
+ 
+ // Grow current process's memory by n bytes.
+@@ -152,6 +206,13 @@ fork(void)
+   for(i = 0; i < NOFILE; i++)
+     if(proc->ofile[i])
+       np->ofile[i] = filedup(proc->ofile[i]);
++
++  //Clone semaphores open from parent to child
++  for(i = 0; i < MAXSEMPROC; i++)
++    if(proc->osem[i]){
++      np->osem[i] = semdup(proc->osem[i]);
++    }
++
+   np->cwd = idup(proc->cwd);
+ 
+   safestrcpy(np->name, proc->name, sizeof(proc->name));
+@@ -161,6 +222,7 @@ fork(void)
+   // lock to force the compiler to emit the np->state write last.
+   acquire(&ptable.lock);
+   np->state = RUNNABLE;
++  enqueue(&ptable.level[np->priorlevel],np);
+   release(&ptable.lock);
+   
+   return pid;
+@@ -173,7 +235,7 @@ void
+ exit(void)
+ {
+   struct proc *p;
+-  int fd;
++  int fd,s;
+ 
+   if(proc == initproc)
+     panic("init exiting");
+@@ -186,6 +248,14 @@ exit(void)
+     }
+   }
+ 
++  // Close all open semaphores.
++  for(s = 0; s < MAXSEMPROC; s++){
++    if(proc->osem[s]){
++      semfree(proc->osem[s]->id);
++      proc->osem[s] = 0;
++    }
++  }
++
+   begin_op();
+   iput(proc->cwd);
+   end_op();
+@@ -266,22 +336,24 @@ void
+ scheduler(void)
+ {
+   struct proc *p;
+-
++  int l;
+   for(;;){
+     // Enable interrupts on this processor.
+     sti();
+ 
+-    // Loop over process table looking for process to run.
++    // Loop over process table levels looking for process to run.
+     acquire(&ptable.lock);
+-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+-      if(p->state != RUNNABLE)
++    for(l=0; l < NLEVELS; l++){
++      if(ptable.level[l].first == NULL)
+         continue;
+ 
++      p = dequeue(&ptable.level[l]);
+       // Switch to chosen process.  It is the process's job
+       // to release ptable.lock and then reacquire it
+       // before jumping back to us.
+       proc = p;
+       switchuvm(p);
++      p->tickscount=0;
+       p->state = RUNNING;
+       swtch(&cpu->scheduler, proc->context);
+       switchkvm();
+@@ -321,6 +393,8 @@ yield(void)
+ {
+   acquire(&ptable.lock);  //DOC: yieldlock
+   proc->state = RUNNABLE;
++  decprior(proc);
++  enqueue(&ptable.level[proc->priorlevel], proc);
+   sched();
+   release(&ptable.lock);
+ }
+@@ -391,8 +465,11 @@ wakeup1(void *chan)
+   struct proc *p;
+ 
+   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+-    if(p->state == SLEEPING && p->chan == chan)
++    if(p->state == SLEEPING && p->chan == chan){
+       p->state = RUNNABLE;
++      incprior(p);
++      enqueue(&ptable.level[p->priorlevel],p);
++    }
+ }
+ 
+ // Wake up all processes sleeping on chan.
+@@ -417,8 +494,10 @@ kill(int pid)
+     if(p->pid == pid){
+       p->killed = 1;
+       // Wake process from sleep if necessary.
+-      if(p->state == SLEEPING)
++      if(p->state == SLEEPING){
+         p->state = RUNNABLE;
++        enqueue(&ptable.level[0],p);
++      }
+       release(&ptable.lock);
+       return 0;
+     }
+@@ -454,7 +533,7 @@ procdump(void)
+       state = states[p->state];
+     else
+       state = "???";
+-    cprintf("%d %s %s", p->pid, state, p->name);
++    cprintf("%d %s %s %d", p->pid, state, p->name, p->priorlevel);
+     if(p->state == SLEEPING){
+       getcallerpcs((uint*)p->context->ebp+2, pc);
+       for(i=0; i<10 && pc[i] != 0; i++)
+@@ -462,4 +541,23 @@ procdump(void)
+     }
+     cprintf("\n");
+   }
++
++  for (i=0; i < NLEVELS; ++i){
++    cprintf("Level %d: ",i);
++    for (p = ptable.level[i].first; p != NULL  ; p = p->next)
++    {
++      cprintf("[%d:%s ",p->pid, p->name);
++      cprintf("] -> ");
++    }
++    cprintf("|\n");
++  }  
+ }
++
++// Set the priority of the running proc to n
++int
++set_priority(int n){
++  if (n<0 || n>=NLEVELS)
++    return -1;
++  proc->priorlevel = n;
++  return 0;
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/proc.h xv6-unrc/proc.h
+--- xv6-unrc-orig/proc.h	2017-05-03 13:59:00.621649404 -0300
++++ xv6-unrc/proc.h	2017-07-01 11:11:14.205018999 -0300
+@@ -42,7 +42,7 @@ extern struct proc *proc asm("%gs:4");
+ // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
+ // but it is on the stack and allocproc() manipulates it.
+ struct context {
+-  uint edi;
++    uint edi;
+   uint esi;
+   uint ebx;
+   uint ebp;
+@@ -66,6 +66,10 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++  char tickscount;             // Ticks counter for timeslice
++  struct proc *next;           // Next process in FIFO sched
++  int priorlevel;              // Priority Level
++  struct semaphore *osem[MAXSEMPROC]; //Open semaphores 
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+diff -rupN xv6-unrc-orig/semaphore.c xv6-unrc/semaphore.c
+--- xv6-unrc-orig/semaphore.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/semaphore.c	2017-07-01 11:11:14.209018999 -0300
+@@ -0,0 +1,163 @@
++#include "types.h"
++#include "defs.h"
++#include "param.h"
++#include "semaphore.h"
++#include "spinlock.h"
++#include "mmu.h"
++#include "proc.h"
++
++//atomice release and return code process
++#define relandret(c) \
++  release(&semtable.lock); \
++  return c
++
++//Check that sem_id is inside the proper margins
++#define checksemid(sem_id,c) \
++  if (sem_id < -1 || sem_id >= MAXSEM) \
++    return c
++  
++
++struct {
++  struct spinlock lock;
++  struct semaphore sem[MAXSEM];
++} semtable;
++
++//Search in proc->osems if any points to same as 's'
++//return arrays position if found, otherwise -1 
++static int
++searchosems(struct semaphore *s){
++  int id;
++  for (id = 0; id < MAXSEMPROC && proc->osem[id] != s; ++id){
++    //nothing, just skip
++  }
++  if(id==MAXSEMPROC){ //s not found in osems
++    return -1;
++  }
++  return id;
++}
++
++// Increment ref count for semaphore s.
++struct semaphore *
++semdup(struct semaphore *s)
++{
++  acquire(&semtable.lock);
++  if(s->refcount < 1)
++    panic("semdup no used sem");
++  s->refcount++;
++  release(&semtable.lock);
++  return s;
++}
++
++
++//Creates or return a semaphores descriptor
++//Returns semaphore id or error code
++int
++semget(int sem_id, int init_value){
++  int id;
++  struct semaphore *s;
++  
++  checksemid(sem_id,-4);
++  acquire(&semtable.lock);
++  if (sem_id == -1) { //Get new semaphore
++    //Search empty place in process semaphores
++    id = searchosems(0);
++    if (id<0){  //process has no free place
++      relandret(-2);
++    }
++    //Search empty place in semtable
++    for(s = semtable.sem; s < &semtable.sem[MAXSEM]; s++){
++      if(s->refcount==0){ //Found free sem
++        //init semaphore and vinculate to process
++        s->id = s-semtable.sem; //sem id is array position
++        s->refcount++;
++        s->val = init_value;
++        proc->osem[id] = s;
++        relandret(s->id);
++      }
++    }
++    //No free sem in system
++    relandret(-3);
++  }
++  else{ //Get semaphore in use
++    s = &semtable.sem[sem_id];
++    if (s->refcount==0){ //sem_id is not in use
++      relandret(-1);
++    }
++    id = searchosems(0);
++    if (id<0){  //process has no free place
++      relandret(-2);
++    }
++    //vinculate semaphore to process
++    s->refcount++;
++    proc->osem[id] = s;
++    relandret(s->id); //exit on succes
++  }
++}
++
++//Release semaphore
++int
++semfree(int sem_id){
++  int id;
++  struct semaphore *s;
++
++  checksemid(sem_id,-1);
++  acquire(&semtable.lock);
++  s = &semtable.sem[sem_id];
++  if (s->refcount==0){ //sem_id is not in use
++    relandret(-1);
++  }
++  id = searchosems(s);
++  if (id<0){  //process is not vinculated to semaphore
++    relandret(-1);
++  }
++  //decrement ref count and devinculate process
++  s->refcount--;
++  proc->osem[id] = 0;
++  relandret(0); //exit on succes
++}
++
++//Decrement semaphore value
++int
++semdown(int sem_id){
++  int id;
++  struct semaphore *s;
++
++  checksemid(sem_id,-1);
++  acquire(&semtable.lock);
++  s = &semtable.sem[sem_id];
++  if (s->refcount==0){ //sem_id is not in use
++    relandret(-1);
++  }
++  id = searchosems(s);
++  if (id<0){  //process is not vinculated to semaphore
++   relandret(-1);
++  }
++  //decrement sem val or lock caller process
++  while(s->val < 1){
++    sleep(&semtable.sem, &semtable.lock);
++  }
++  s->val--;
++  relandret(0); //exit on sucess
++}
++
++//Increment semaphore value
++int
++semup(int sem_id){
++  int id;
++  struct semaphore *s;
++
++  checksemid(sem_id,-1);
++  acquire(&semtable.lock);
++  s = &semtable.sem[sem_id];
++  if (s->refcount==0){ //sem_id is not in use
++    relandret(-1);
++  }
++  id = searchosems(s);
++  if (id<0){  //process is not vinculated to semaphore
++    relandret(-1);
++  }
++  //increment sem val and wake up sleeping process
++  s->val++;
++  wakeup(&semtable.sem);
++  relandret(0); //exit on sucess
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/semaphore.h xv6-unrc/semaphore.h
+--- xv6-unrc-orig/semaphore.h	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/semaphore.h	2017-07-01 11:11:14.209018999 -0300
+@@ -0,0 +1,7 @@
++
++struct semaphore {
++  uint id; //semaphore id : [0..MAXSEM-1]
++  int val; //semaphore value
++  int refcount; //n of process referencing to the semaphore
++
++}; 
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/syscall.c xv6-unrc/syscall.c
+--- xv6-unrc-orig/syscall.c	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/syscall.c	2017-07-01 11:11:14.209018999 -0300
+@@ -98,6 +98,17 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_procstat(void);
++extern int sys_set_priority(void);
++extern int sys_semget(void);
++extern int sys_semfree(void);
++extern int sys_semup(void);
++extern int sys_semdown(void);
++extern int sys_fseek(void);
++extern int sys_flock(void);
++extern int sys_funlock(void);
++extern int sys_rename(void);
++
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -121,6 +132,16 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_procstat]   sys_procstat,
++[SYS_set_priority]   sys_set_priority,
++[SYS_semget]   sys_semget,
++[SYS_semfree]   sys_semfree,
++[SYS_semup]   sys_semup,
++[SYS_semdown]   sys_semdown,
++[SYS_fseek]   sys_fseek,
++[SYS_flock]   sys_flock,
++[SYS_funlock]   sys_funlock,
++[SYS_rename]   sys_rename,
+ };
+ 
+ void
+diff -rupN xv6-unrc-orig/syscall.h xv6-unrc/syscall.h
+--- xv6-unrc-orig/syscall.h	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/syscall.h	2017-07-01 11:11:14.209018999 -0300
+@@ -20,3 +20,13 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_procstat 22
++#define SYS_set_priority 23
++#define SYS_semget 24
++#define SYS_semfree 25
++#define SYS_semup 26
++#define SYS_semdown 27
++#define SYS_fseek 28
++#define SYS_flock 29
++#define SYS_funlock 30
++#define SYS_rename 31
+diff -rupN xv6-unrc-orig/sysfile.c xv6-unrc/sysfile.c
+--- xv6-unrc-orig/sysfile.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/sysfile.c	2017-07-01 11:11:14.209018999 -0300
+@@ -88,6 +88,35 @@ sys_write(void)
+ }
+ 
+ int
++sys_fseek(void){
++  struct file *f;
++  int n;
++
++  if(argfd(0, 0, &f) < 0 || argint(1, &n) < 0 )
++    return -1;
++
++  return fileseek(f, n);
++}
++
++int
++sys_flock(void){
++  struct file *f;
++
++  if(argfd(0, 0, &f) < 0 )
++    return -1;
++  return filelock(f);
++}
++
++int
++sys_funlock(void){
++  struct file *f;
++
++  if(argfd(0, 0, &f) < 0 )
++    return -1;
++  return fileunlock(f);
++}
++
++int
+ sys_close(void)
+ {
+   int fd;
+@@ -235,7 +264,98 @@ bad:
+   return -1;
+ }
+ 
+-static struct inode*
++int
++sys_rename(void){
++  /*Error Code:
++    -1: old does not exist
++    -2: cannot link to new
++    -3: cannot unlink old
++  */
++  char name[DIRSIZ], *new, *old;
++  struct inode *dp, *ip;
++  struct dirent de;
++  uint off;
++
++  //get args
++  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
++    return -1;
++
++  begin_op();
++  //Check that old exist
++  if((ip = namei(old)) == 0){
++    end_op();
++    return -1;
++  }
++  
++  
++  //link new
++  ilock(ip);
++  ip->nlink++;
++  iupdate(ip);
++  iunlock(ip);
++  
++   //check new  path exist
++  if((dp = nameiparent(new, name)) == 0)
++    goto bad;
++
++  ilock(dp);
++  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
++    iunlockput(dp);
++    goto bad;
++  }
++  iunlockput(dp);
++  iput(ip);
++
++  //unlink old
++  if((dp = nameiparent(old, name)) == 0){
++    end_op();
++    return -3;
++  }
++
++  ilock(dp);
++
++  // Cannot unlink "." or "..".
++  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
++    goto bad_;
++
++  if((ip = dirlookup(dp, name, &off)) == 0)
++    goto bad_;
++  ilock(ip);
++
++  if(ip->nlink < 1)
++    panic("rename: nlink < 1");
++
++  memset(&de, 0, sizeof(de));
++  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
++    panic("rename: writei");
++  if(ip->type == T_DIR){
++    dp->nlink--;
++    iupdate(dp);
++  }
++  iunlockput(dp);
++  ip->nlink--;
++  iupdate(ip);
++  iunlockput(ip);
++
++  //successful exit
++  end_op();
++  return 0;
++
++bad:
++  ilock(ip);
++  ip->nlink--;
++  iupdate(ip);
++  iunlockput(ip);
++  end_op();
++  return -2;
++
++bad_:
++  iunlockput(dp);
++  end_op();
++  return -3;
++}
++
++static struct inode *
+ create(char *path, short type, short major, short minor)
+ {
+   uint off;
+diff -rupN xv6-unrc-orig/sysproc.c xv6-unrc/sysproc.c
+--- xv6-unrc-orig/sysproc.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/sysproc.c	2017-07-01 11:11:14.213018999 -0300
+@@ -89,3 +89,56 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_procstat(void)
++{
++  procdump();
++  return 0;
++}
++
++int
++sys_set_priority(void)
++{
++  int n;
++
++  if(argint(0, &n) < 0)
++    return -1;
++  return set_priority(n);
++}
++
++int 
++sys_semget(void)
++{
++  int id,val;
++  if(argint(0, &id) < 0 || argint(1, &val) < 0)
++    return -1;
++  return semget(id,val);
++}
++
++int 
++sys_semfree(void)
++{
++  int id;
++  if(argint(0, &id) < 0)
++    return -1;
++  return semfree(id);
++}
++
++int 
++sys_semup(void)
++{
++  int id;
++  if(argint(0, &id) < 0)
++    return -1;
++  return semup(id);
++}
++
++int 
++sys_semdown(void)
++{
++  int id;
++  if(argint(0, &id) < 0)
++    return -1;
++  return semdown(id);
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/trap.c xv6-unrc/trap.c
+--- xv6-unrc-orig/trap.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/trap.c	2017-07-01 11:11:14.213018999 -0300
+@@ -77,7 +77,23 @@ trap(struct trapframe *tf)
+             cpu->id, tf->cs, tf->eip);
+     lapiceoi();
+     break;
+-   
++
++  case T_STACK:
++  case T_PGFLT:
++    if (proc > 0 ){/* user space? */
++      if ((proc->tf->esp - rcr2()) < 8 ){
++        /* stack overflow detected */
++        if (rcr2() >= proc->sz-(PGSIZE*NSTACKPAGES) ){
++          /* can assign more pages */
++          allocuvm(proc->pgdir, PGROUNDDOWN(rcr2()), PGROUNDUP(rcr2()));
++          //cprintf("::Allocated New Page::\n");
++          break;
++        }
++        cprintf("::stack overflow::\n");
++      }
++    }
++    //Do not break, continue to kill the process
++
+   //PAGEBREAK: 13
+   default:
+     if(proc == 0 || (tf->cs&3) == 0){
+@@ -102,8 +118,10 @@ trap(struct trapframe *tf)
+ 
+   // Force process to give up CPU on clock tick.
+   // If interrupts were on while locks held, would need to check nlock.
+-  if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
+-    yield();
++  if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER){
++      proc->tickscount++;                            //Increase the pocess ticks counter
++      if (proc->tickscount > QUANTUM) yield();  //Realease the CPU if quamtum is over
++  }
+ 
+   // Check if the process has been killed since we yielded
+   if(proc && proc->killed && (tf->cs&3) == DPL_USER)
+diff -rupN xv6-unrc-orig/user/badsemtest.c xv6-unrc/user/badsemtest.c
+--- xv6-unrc-orig/user/badsemtest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/badsemtest.c	2017-07-01 11:11:14.213018999 -0300
+@@ -0,0 +1,117 @@
++#include "types.h"
++#include "user.h"
++
++#define LIMIT 1000
++int
++main(void)
++{	
++
++    int i=0, semid,mutex;
++
++    /*checking for non process sema access*/
++    int chk = semup(20);
++    if(chk<0)
++        printf(1,"Testing non adquired semaphore (up): OK!\n");
++    else
++        printf(1,"Testing non adquired semaphore (up): FAILED.\n");
++    
++    chk = semdown(20);
++    if(chk<0)
++        printf(1,"Testing non adquired semaphore (down): OK!\n");
++    else
++        printf(1,"Testing non adquired semaphore (down): FAILED.\n");
++
++    /*checking for free*/
++    chk=semfree(8);
++    if(chk<0)
++        printf(1,"Testing semfree: OK!.\n");
++    else
++        printf(1,"Testing semfree: FAILED!.\n");
++    
++    /*checking for getting all the resources*/
++    int countsem=0,it;
++    chk=0;
++    for(it=0 ; it<LIMIT && chk>=0; it++,countsem++){
++        chk = semget(-1,4);   
++        printf(1,"semget: %d\n",chk);
++             
++    }    
++    printf(1,"Testing get all semaphores availables (%d availables?).\n",countsem-1);
++    
++    /*checking for free: sem 0 was adquired*/
++    chk=semfree(0);
++    if(chk==0)
++        printf(1,"Testing semfree sem 0: OK!.\n");
++    else
++        printf(1,"Testing semfree sem 0: FAILED!.\n");
++
++    /*checking for free: but not twice!*/
++    chk=semfree(0);
++    if(chk<0)
++        printf(1,"Testing semfree sem 0 (second time): OK!.\n");
++    else
++        printf(1,"Testing semfree sem 0 (second time): FAILED!.\n");
++
++    /*cheching binary semaphore locking*/
++
++
++   /*cheching n-ary semaphore*/
++   semfree(1); //release one semaphore
++   mutex=semget(-1,1); //sinchronize console access
++   semid=semget(-1,2);
++   if(fork()==0){
++     semget(semid,-1);        
++
++     for(i=0;i<10;i++){
++       semdown(mutex);
++       printf(1,"1st child trying... \n");
++       semup(mutex);
++       
++       semdown(semid);
++       
++       semdown(mutex);
++       printf(1,"1st child in critical region \n");
++       semup(mutex);
++
++       semup(semid);
++     }
++     exit();
++   }
++   /*second child*/
++   if(fork()==0){
++     semget(semid,-1);
++
++     for(i=0;i<10;i++){
++      semdown(mutex);
++      printf(1,"2nd child trying... \n");
++      semup(mutex);
++
++      semdown(semid);
++
++      semdown(mutex);
++      printf(1,"2nd child in critical region \n");
++      semup(mutex);
++
++      semup(semid);
++     }   
++     exit();
++   }
++   /*Parent code*/
++   for(i=0;i<10;i++){
++    semdown(mutex);
++    printf(1,"Parent trying... \n");
++    semup(mutex);
++
++    semdown(semid);
++ 
++    semdown(mutex);
++    printf(1,"Parent in critical region \n");
++    semup(mutex);
++
++    semup(semid);
++   }
++   wait();
++   wait();
++   exit();
++
++}
+diff -rupN xv6-unrc-orig/user/flocktest.c xv6-unrc/user/flocktest.c
+--- xv6-unrc-orig/user/flocktest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/flocktest.c	2017-07-01 11:11:14.213018999 -0300
+@@ -0,0 +1,84 @@
++/*
++  User Program to test flock & funlock syscalls.
++  Create CHILDS processes that work concurrently
++  over a file (FILE) reading an int value and writing
++  its succesor CICLES times.
++  Use:
++   > flocktest [FILE]
++   FILE: Output file
++*/
++
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++#include "fcntl.h"
++
++#define CICLES 10
++#define CHILDS 10
++
++void
++locktest(int fd){
++  int i,n;
++  char buf[512];
++  for (i = 0; i < CICLES; ++i)
++  {
++    
++    flock(fd);
++    if ( fseek(fd, 0) < 0) exit();
++    read(fd, buf, sizeof(buf));
++    n = atoi(buf);
++
++    if ( fseek(fd, 0) < 0) exit();
++    printf(fd, "%d",++n);
++    if ( fseek(fd, 0) < 0) exit(); 
++    funlock(fd);
++  }
++}
++
++int main(int argc, char const *argv[])
++{
++  int fd,pid,count,kid;
++  char buf[512];
++  char *path; 
++  
++  //Set path
++  if(argc>1) path=(char*)argv[1];
++  else path="count";
++
++  //Open file
++  fd = open(path, O_CREATE | O_RDWR);
++  printf(fd, "%d",0); //initialize with 0
++  
++  //Create multiple processes
++  for (kid = 0; kid < CHILDS; ++kid) {
++    pid = fork();
++    if(pid < 0){
++        exit();
++    }
++    else if (pid > 0){
++        /* Parent process */
++    }
++    else{
++        /* Child process */
++        //Run test simultaneously
++        locktest(fd);
++        exit();
++    }
++  }
++
++  for (kid = 0; kid < CHILDS; ++kid) {
++      wait(); // kids could be ready in any order
++  }
++
++  //Show Result
++  if ( fseek(fd, 0) < 0) exit();  
++  read(fd, buf, sizeof(buf));
++  count = atoi(buf);
++  printf(1,"count = %d\n", count);
++  
++  //Close file
++  close(fd);
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/forktest.c xv6-unrc/user/forktest.c
+--- xv6-unrc-orig/user/forktest.c	2017-05-03 13:59:00.629649404 -0300
++++ xv6-unrc/user/forktest.c	2017-05-05 20:35:52.901623295 -0300
+@@ -21,6 +21,10 @@ forktest(void)
+   printf(1, "fork test\n");
+ 
+   for(n=0; n<N; n++){
++    if (n==4){ //fifth call
++      printf(1,"Calling procstat()\n");
++      procstat(); //show process status           
++    }
+     pid = fork();
+     if(pid < 0)
+       break;
+diff -rupN xv6-unrc-orig/user/param.h xv6-unrc/user/param.h
+--- xv6-unrc-orig/user/param.h	2017-05-03 13:59:00.617649404 -0300
++++ xv6-unrc/user/param.h	2017-07-01 11:11:14.205018999 -0300
+@@ -10,4 +10,8 @@
+ #define MAXOPBLOCKS  10  // max # of blocks any FS op writes
+ #define LOGSIZE      (MAXOPBLOCKS*3)  // max data sectors in on-disk log
+ #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
+-
++#define QUANTUM 	   10	 // max ticks a process has to use cpu
++#define NLEVELS 	   4 	 // number of priority levels 
++#define MAXSEM 	 	   20  // max semaphores on system 
++#define MAXSEMPROC   5   // max semaphores per process 
++#define NSTACKPAGES  4	 // maximum stack pages per process 
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/prodcons.c xv6-unrc/user/prodcons.c
+--- xv6-unrc-orig/user/prodcons.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/prodcons.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,57 @@
++//Implementation of Producer-Consumer problem with semaphores
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++#include "fcntl.h"
++
++#define BUFFER_SIZE 10
++#define PRODUCERS 10
++#define CONSUMERS 10
++
++int main(int argc, char const *argv[])
++{
++  int items;  // items produced
++  int space;  // space remaining
++
++  int fid,p,c,pid;
++
++  //Get new semaphores
++  if ((items = semget(-1,0))  < 0) exit();
++  if ((space = semget(-1,BUFFER_SIZE))  < 0) exit();
++
++  fid = fork();
++  /*
++  if (fid == 0){
++    //Copy semaphores from father
++    if (semget(items,0)  < 0) exit();
++    if (semget(space,BUFFER_SIZE)  < 0) exit();
++  }
++  */
++  pid = getpid();
++
++  if (fid > 0){
++    for (c = CONSUMERS; c > 0; c--){
++      if ( semdown(items) < 0) exit();
++      printf(1,"pid:%d CONSUMER\n",pid);
++      if ( semup(space) < 0) exit();
++    }
++  }
++  else{
++    for (p = PRODUCERS; p > 0; p--){
++      if ( semdown(space) < 0) exit();
++      printf(1,"pid:%d PRODUCER\n",pid );
++      sleep(50);
++      if ( semup(items) < 0) exit();
++    } 
++  }
++  
++  if(fid==0) exit();
++  
++  wait();
++
++  if(semfree(items)<0) exit();
++  if(semfree(space)<0) exit();
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/quantumtest.c xv6-unrc/user/quantumtest.c
+--- xv6-unrc-orig/user/quantumtest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/quantumtest.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,20 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++
++int 
++main(void)
++{	
++	set_priority(3);
++	procstat();
++	int i=50000;
++	int p=1;
++	while(i>0){
++		if (i%2==0) p+=i;
++		else p-=i;
++		i--;
++	}
++	printf(1,"p = %d\n",p );
++	exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/rename.c xv6-unrc/user/rename.c
+--- xv6-unrc-orig/user/rename.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/rename.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,30 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++#include "fcntl.h"
++
++int main(int argc, char const *argv[])
++{
++  char *oldpath,*newpath;
++  int ec;
++
++  if (argc != 3)
++  {
++    printf(2,"usage: 'rename oldpath newpath'\n" );
++    exit();
++  }
++  oldpath=(char*)argv[1];
++  newpath=(char*)argv[2];
++
++  ec=rename(oldpath, newpath);
++  if( ec < 0)
++  {
++    printf(2,"rename: error");
++    if(ec==-1) printf(2,": '%s' does not exist",oldpath);
++    if(ec==-2) printf(2,": cannot rename '%s' to '%s'",oldpath,newpath);
++    printf(2,".\n");
++    exit();
++  }
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/seektest.c xv6-unrc/user/seektest.c
+--- xv6-unrc-orig/user/seektest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/seektest.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,32 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++#include "fcntl.h"
++
++#define MAX 10
++
++int main(int argc, char const *argv[])
++{
++  int fd,n;
++  char path[] = "tmpfile";
++
++  char buf[512];
++  char a[] = "hello ";
++  char b[] = "       world.";
++  fd = open(path, O_CREATE | O_RDWR);
++
++  if ( write(fd, b, sizeof(b)) < 0) exit(); //write '     world.'
++
++  if ( fseek(fd, 0) < 0) exit();
++
++  if ( write(fd, a, sizeof(a)) < 0) exit(); //write 'hello '
++
++  printf(1,"message :\n");
++  
++  if ( fseek(fd, 0) < 0) exit();
++  while((n = read(fd, buf, sizeof(buf))) > 0)
++    write(1, buf, n);
++  write(1,"\n",1);
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/semtest2.c xv6-unrc/user/semtest2.c
+--- xv6-unrc-orig/user/semtest2.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/semtest2.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,51 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++#include "fcntl.h"
++
++#define MAX 10
++
++int main(int argc, char const *argv[])
++{
++  int fd,fd2,i,l,fid;
++  char path[] = "fsem";
++  int sem;
++
++  char buf[512];
++  char a[] = "0";
++  printf(1,"a = %s\n",a );
++
++  sem = semget(-1,1);
++  if (sem<0) exit();
++  printf(1,"semget ok\n");
++  fd = open(path, O_CREATE | O_RDWR);
++  fd2 = open(path, O_RDONLY);
++  if (fd<0) exit();
++  printf(1,"open ok, fd=%d, fd2=%d\n",fd,fd2);
++  
++  if ( write(fd, a, sizeof(a)) < 0) exit();
++  printf(1,"write ok\n");
++  fid = fork();
++  //if(fid==0) semget(sem,0);
++  for(i=0; i < MAX; i++){
++    if (fid == 0) printf(1,"child ");
++    else          printf(1,"father ");
++    if ( semdown(sem) < 0) exit();
++    //printf(1,"semdown ok\n" );
++    l=read(fd2,buf,sizeof(buf));
++    if ( l < 0) exit();
++    printf(1,"readed %d bytes :'%s'\n",l,buf );
++
++    write(fd,buf,l);
++    if ( semup(sem) < 0) exit();
++    //printf(1,"semup ok\n" );
++  }
++  if(fid==0) exit();
++  
++  wait();
++
++  if(semfree(sem)<0) exit();
++  printf(1,"semfree ok\n");
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/semtest.c xv6-unrc/user/semtest.c
+--- xv6-unrc-orig/user/semtest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/semtest.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,51 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++#define MAX 1000
++
++int testget(int *sem){
++  int sem2,sem3;
++  *sem = semget(-1,1);
++  printf(1,"sem_id1 is: %d\n",*sem );
++  if (*sem<0) return *sem;
++  sem2 = semget(-1,1);
++  printf(1,"sem_id2 is: %d\n",sem2 );
++  if (sem2<0) return sem2;
++  semget(-1,1);
++  semget(-1,1);
++  // semget(-1,1); causes error (exceded max num of semgets (MAXSEMPROC))
++  sem3 = semget(-1,1);
++  printf(1,"sem_id3 is: %d\n",sem3 );
++  if (sem3<0) return sem3;
++
++  printf(1,"semget ok\n");
++  return 0;
++}
++
++int main(int argc, char const *argv[])
++{
++  int n;
++  int i;
++  int sem;
++  if(testget(&sem)) exit();
++
++  //Fork
++  if (fork()==0){
++    //child
++    for(i=0; i < MAX; i++){
++      n++;
++    }
++    exit();
++  }else{
++    //father
++    for(i=0; i < MAX; i++){
++      n++;
++    }
++    wait();
++  }
++  printf(1,"n= %d\n",n);
++  if(semfree(sem)<0) exit();
++  printf(1,"semfree ok\n");
++  exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/stacktest.c xv6-unrc/user/stacktest.c
+--- xv6-unrc-orig/user/stacktest.c	1969-12-31 21:00:00.000000000 -0300
++++ xv6-unrc/user/stacktest.c	2017-07-01 11:11:14.217018999 -0300
+@@ -0,0 +1,29 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++#include "fs.h"
++
++int fib(int n){
++	int arr[512];
++	if (n==0){
++		arr[0]=0;
++		return 0;
++	}
++	if (n==1){
++		arr[511]=0;
++		arr[0]=1;
++		return arr[0];
++	}
++	else{
++		return fib(n-1) + fib(n-2);
++	}
++}
++
++int 
++main(void)
++{	
++	int x;
++	x=fib(4);
++	printf(1,"x=%d\n",x );
++	exit();
++}
+\ No hay ningún carácter de nueva línea al final del archivo
+diff -rupN xv6-unrc-orig/user/syscall.h xv6-unrc/user/syscall.h
+--- xv6-unrc-orig/user/syscall.h	2017-05-03 13:59:00.625649404 -0300
++++ xv6-unrc/user/syscall.h	2017-07-01 11:11:14.209018999 -0300
+@@ -20,3 +20,13 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_procstat 22
++#define SYS_set_priority 23
++#define SYS_semget 24
++#define SYS_semfree 25
++#define SYS_semup 26
++#define SYS_semdown 27
++#define SYS_fseek 28
++#define SYS_flock 29
++#define SYS_funlock 30
++#define SYS_rename 31
+diff -rupN xv6-unrc-orig/user/user.h xv6-unrc/user/user.h
+--- xv6-unrc-orig/user/user.h	2017-05-03 13:59:00.633649404 -0300
++++ xv6-unrc/user/user.h	2017-07-01 11:11:14.221018999 -0300
+@@ -23,6 +23,16 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int procstat(void);
++int set_priority(int);
++int semget(int,int);
++int semfree(int);
++int semup(int);
++int semdown(int);
++int fseek(int, int);
++int flock(int);
++int funlock(int);
++int rename(const char*,const char*);
+ 
+ // ulib.c
+ int stat(char*, struct stat*);
+diff -rupN xv6-unrc-orig/user/usys.S xv6-unrc/user/usys.S
+--- xv6-unrc-orig/user/usys.S	2017-05-03 13:59:00.633649404 -0300
++++ xv6-unrc/user/usys.S	2017-07-01 11:11:14.221018999 -0300
+@@ -29,3 +29,13 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(procstat)
++SYSCALL(set_priority)
++SYSCALL(semget)
++SYSCALL(semfree)
++SYSCALL(semup)
++SYSCALL(semdown)
++SYSCALL(fseek)
++SYSCALL(flock)
++SYSCALL(funlock)
++SYSCALL(rename)
+diff -rupN xv6-unrc-orig/vm.c xv6-unrc/vm.c
+--- xv6-unrc-orig/vm.c	2017-05-03 13:59:00.633649404 -0300
++++ xv6-unrc/vm.c	2017-07-01 11:11:14.221018999 -0300
+@@ -319,8 +319,8 @@ copyuvm(pde_t *pgdir, uint sz)
+   for(i = 0; i < sz; i += PGSIZE){
+     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+       panic("copyuvm: pte should exist");
+-    if(!(*pte & PTE_P))
+-      panic("copyuvm: page not present");
++  //  if(!(*pte & PTE_P))
++  //    panic("copyuvm: page not present");
+     pa = PTE_ADDR(*pte);
+     flags = PTE_FLAGS(*pte);
+     if((mem = kalloc()) == 0)
