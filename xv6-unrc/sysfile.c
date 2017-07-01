@@ -290,11 +290,6 @@ sys_rename(void){
   
   //link new
   ilock(ip);
-  if(ip->type == T_DIR){
-    iunlockput(ip);
-    end_op();
-    return -2;
-  }
   ip->nlink++;
   iupdate(ip);
   iunlock(ip);
@@ -329,10 +324,6 @@ sys_rename(void){
 
   if(ip->nlink < 1)
     panic("rename: nlink < 1");
-  if(ip->type == T_DIR && !isdirempty(ip)){
-    iunlockput(ip);
-    goto bad_;
-  }
 
   memset(&de, 0, sizeof(de));
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
